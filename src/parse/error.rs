@@ -54,6 +54,12 @@ impl<D: Diagnostic + Clone> CloneDiagnostic for D {
 #[derive(Debug, Clone, Copy)]
 pub struct UnexpectedEndOfFile<T: Diagnostic + Clone>(T);
 
+impl<T: Diagnostic + Clone> UnexpectedEndOfFile<T> {
+  pub fn new(inner: T) -> Self {
+    Self(inner)
+  }
+}
+
 impl<T: Diagnostic + Clone> private::Sealed for UnexpectedEndOfFile<T> {}
 impl<T: Diagnostic + Clone> Spanned for UnexpectedEndOfFile<T> {
   #[inline]
@@ -73,10 +79,49 @@ pub struct Error {
   messages: Vec<Box<dyn Diagnostic>>,
 }
 
+impl Debug for Error {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    struct DiagMessage<'a>(&'a dyn Diagnostic);
+    impl<'a> Debug for DiagMessage<'a> {
+      fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let msg = self.0.message();
+        Debug::fmt(&msg, f)
+      }
+    }
+
+    struct DiagDebug<'a>(&'a dyn Diagnostic);
+    impl<'a> Debug for DiagDebug<'a> {
+      fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Diagnostic")
+          .field("span", &self.0.span())
+          .field("message", &DiagMessage(self.0))
+          .finish()
+      }
+    }
+
+    f.debug_list().entries(self.iter().map(DiagDebug)).finish()
+  }
+}
+
+impl From<Vec<Box<dyn Diagnostic>>> for Error {
+  fn from(messages: Vec<Box<dyn Diagnostic>>) -> Self {
+    Self { messages }
+  }
+}
+
 impl Clone for Error {
   fn clone(&self) -> Self {
     let messages = self.messages.iter().map(|d| d.clone_diagnostic()).collect();
     Error { messages }
+  }
+}
+
+impl IntoIterator for Error {
+  type Item = Box<dyn Diagnostic>;
+  type IntoIter = alloc::vec::IntoIter<Self::Item>;
+
+  fn into_iter(self) -> Self::IntoIter {
+    self.messages.into_iter()
   }
 }
 
@@ -95,6 +140,10 @@ impl Error {
     } else {
       Error::new(diagnostic)
     }
+  }
+
+  pub fn iter(&self) -> impl Iterator<Item = &dyn Diagnostic> {
+    self.messages.iter().map(|boxed| boxed.as_ref())
   }
 }
 

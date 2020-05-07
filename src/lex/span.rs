@@ -1,4 +1,11 @@
-use core::{cmp, fmt, fmt::Debug, ops};
+use core::{
+  cmp, fmt,
+  fmt::Debug,
+  ops,
+  sync::atomic::{AtomicUsize, Ordering},
+};
+
+static NEXT_FILE_ID: AtomicUsize = AtomicUsize::new(1);
 
 /// An interned file.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -9,6 +16,10 @@ impl FileId {
 
   pub(crate) fn span(&self, span: std::ops::Range<usize>) -> Span {
     Span::new(*self, Pos(span.start), Pos(span.end))
+  }
+
+  pub(crate) fn next() -> Self {
+    FileId(NEXT_FILE_ID.fetch_add(1, Ordering::SeqCst))
   }
 }
 

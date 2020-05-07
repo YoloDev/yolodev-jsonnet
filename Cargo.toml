@@ -1,5 +1,5 @@
 [package]
-name = "jsonproc"
+name = "yolodev-jsonnet"
 version = "0.1.0"
 authors = ["Aleksander Heintz <alxandr@alxandr.me>"]
 edition = "2018"

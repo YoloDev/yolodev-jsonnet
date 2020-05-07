@@ -4,16 +4,26 @@ pub(crate) mod lookahead;
 
 use crate::{
   ast::punctuated::Punctuated,
-  lex::{span::Span, token::Tok},
+  lex::{
+    span::{FileId, Span},
+    token::Tok,
+    Lexer,
+  },
   parse::{
     buffer::Cursor,
-    error::{Error, Result, Severity},
+    error::{Diagnostic, Error, Result, Severity},
     lookahead::{Lookahead1, Peek},
   },
 };
 use alloc::rc::Rc;
-use core::{cell::Cell, fmt, fmt::Debug, marker::PhantomData, mem, ops::Deref};
-use error::Diagnostic;
+use core::{
+  cell::Cell,
+  fmt,
+  fmt::{Debug, Display},
+  marker::PhantomData,
+  mem,
+  ops::Deref,
+};
 
 /// Parsing interface implemented by all types that can be parsed in a default
 /// way from a token stream.
@@ -57,15 +67,26 @@ impl<'a> Drop for ParseBuffer<'a> {
   }
 }
 
-// impl<'a> Display for ParseBuffer<'a> {
-//   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//     Display::fmt(&self.cursor().token_stream(), f)
-//   }
-// }
-
 impl<'a> Debug for ParseBuffer<'a> {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    Debug::fmt(&self.cursor().as_ref(), f)
+    f.debug_list().entries(self.cell.get().iter()).finish()
+  }
+}
+
+impl<'a> Display for ParseBuffer<'a> {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    let mut is_first = true;
+    for token in self.cell.get().iter() {
+      if is_first {
+        is_first = false;
+      } else {
+        f.write_str(" ")?;
+      }
+
+      Display::fmt(token, f)?;
+    }
+
+    Ok(())
   }
 }
 
@@ -188,6 +209,7 @@ impl<'a> ParseBuffer<'a> {
 
   /// Calls the given parser function to parse a syntax tree node of type `T`
   /// from this stream.
+  #[inline]
   pub fn call<T>(&self, function: fn(ParseStream) -> Result<T>) -> Result<T> {
     function(self)
   }
@@ -330,5 +352,56 @@ impl<T: Parse + Tok> Parse for Option<T> {
     } else {
       Ok(None)
     }
+  }
+}
+
+pub(crate) fn parse<T: Parse>(content: &str, file: FileId) -> Result<T> {
+  let mut lex = Lexer::new(content, file);
+  let mut errors = Vec::new();
+  let buf = buffer::parse_tree(&mut lex, &mut errors);
+
+  // Should we attemt to parse even if there are errors?
+  if errors.is_empty() {
+    let cursor = buf.begin();
+    let buf = new_parse_buffer(lex.span(), cursor, Default::default());
+    let result = T::parse(&buf);
+    if let Err(e) = buf.check_unexpected() {
+      errors.extend(e);
+    }
+
+    if !buf.is_empty() {
+      errors.push(Box::new(error::UnexpectedToken::new(buf.span())));
+    }
+
+    match result {
+      Err(e) => errors.extend(e),
+      Ok(t) if errors.is_empty() => {
+        return Ok(t);
+      }
+      _ => (),
+    }
+  }
+
+  Err(Error::from(errors))
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use test_case::test_case;
+
+  #[test_case("test(test{test[test]test})", "test ( test { test [ test ] test } )")]
+  fn test_parsebuffer_display(source: &str, expected: &str) {
+    let file = FileId::UNKNOWN;
+    let mut lex = Lexer::new(source, file);
+    let mut errors = Vec::new();
+    let buf = buffer::parse_tree(&mut lex, &mut errors);
+
+    assert!(errors.is_empty());
+    let cursor = buf.begin();
+    let buf = new_parse_buffer(lex.span(), cursor, Default::default());
+    let actual = format!("{}", buf);
+
+    assert_eq!(&actual, expected);
   }
 }

@@ -335,7 +335,7 @@ enum RawToken<'a> {
   #[regex(r"(?:0|[1-9][0-9]*)\.[^0-9]")]
   ErrorNumJunkAfterDecimalPoint(&'a str),
 
-  #[regex(r"(?:0|[1-9][0-9]*)(?:\.[0-9]+)?[eE][^+-0-9]")]
+  #[regex(r"(?:0|[1-9][0-9]*)(?:\.[0-9]+)?[eE][^+\-0-9]")]
   ErrorNumJunkAfterExponent(&'a str),
 
   #[regex(r"(?:0|[1-9][0-9]*)(?:\.[0-9]+)?[eE][+-][^0-9]")]
@@ -609,20 +609,20 @@ impl<'a> Lexer<'a> {
       RawToken::ErrorNumJunkAfterDecimalPoint(s) => {
         Err(error::NumberJunkAfterDecimalPoint::new(span).into())
       }
-      RawToken::ErrorNumJunkAfterExponent(s) => {
+      RawToken::ErrorNumJunkAfterExponent(_) => {
         Err(error::NumberJunkAfterExponent::new(span).into())
       }
-      RawToken::ErrorNumJunkAfterExponentSign(s) => {
+      RawToken::ErrorNumJunkAfterExponentSign(_) => {
         Err(error::NumberJunkAfterExponentSign::new(span).into())
       }
-      RawToken::SymbolLeftBrace => Ok(token::LeftBrace::new(span).into()),
-      RawToken::SymbolRightBrace => Ok(token::RightBrace::new(span).into()),
-      RawToken::SymbolLeftBracket => Ok(token::LeftBracket::new(span).into()),
-      RawToken::SymbolRightBracket => Ok(token::RightBracket::new(span).into()),
+      RawToken::SymbolLeftBrace => Ok(token::BraceL::new(span).into()),
+      RawToken::SymbolRightBrace => Ok(token::BraceR::new(span).into()),
+      RawToken::SymbolLeftBracket => Ok(token::BracketL::new(span).into()),
+      RawToken::SymbolRightBracket => Ok(token::BracketR::new(span).into()),
       RawToken::SymbolComma => Ok(token::Comma::new(span).into()),
       RawToken::SymbolDot => Ok(token::Dot::new(span).into()),
-      RawToken::SymbolLeftParen => Ok(token::LeftParen::new(span).into()),
-      RawToken::SymbolRightParen => Ok(token::RightParen::new(span).into()),
+      RawToken::SymbolLeftParen => Ok(token::ParenL::new(span).into()),
+      RawToken::SymbolRightParen => Ok(token::ParenR::new(span).into()),
       RawToken::SymbolSemi => Ok(token::SemiColon::new(span).into()),
       RawToken::SymbolDollar => Ok(token::Dollar::new(span).into()),
       RawToken::Op(op) => Lexer::op(op, span),
@@ -733,12 +733,12 @@ mod tests {
     test_tokens!("  \t\n\r\r\n", []);
   }
 
-  #[test_case("{", LeftBrace::from_range(0..1))]
-  #[test_case("}", RightBrace::from_range(0..1))]
-  #[test_case("[", LeftBracket::from_range(0..1))]
-  #[test_case("]", RightBracket::from_range(0..1))]
-  #[test_case("(", LeftParen::from_range(0..1))]
-  #[test_case(")", RightParen::from_range(0..1))]
+  #[test_case("{", BraceL::from_range(0..1))]
+  #[test_case("}", BraceR::from_range(0..1))]
+  #[test_case("[", BracketL::from_range(0..1))]
+  #[test_case("]", BracketR::from_range(0..1))]
+  #[test_case("(", ParenL::from_range(0..1))]
+  #[test_case(")", ParenR::from_range(0..1))]
   #[test_case(",", Comma::from_range(0..1))]
   #[test_case(".", Dot::from_range(0..1))]
   #[test_case(";", SemiColon::from_range(0..1))]

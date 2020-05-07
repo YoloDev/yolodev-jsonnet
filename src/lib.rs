@@ -2,7 +2,7 @@
 #![feature(const_fn)]
 #![feature(trace_macros)]
 #![feature(ptr_offset_from)]
-#![cfg_attr(test, feature(option_expect_none))]
+#![cfg_attr(test, feature(option_expect_none, box_patterns))]
 
 extern crate alloc;
 
@@ -10,7 +10,7 @@ macro_rules! define_error {
   (
     @impl
     $(#[$($m:tt)*])+
-    pub struct $name:ident {
+    $vis:vis struct $name:ident {
       $(
         $(#[$($field_meta:tt)*])*
         $field:ident: $field_ty:ty,
@@ -19,7 +19,7 @@ macro_rules! define_error {
   ) => {
     $(#[$($m)*])+
     #[derive(Clone, Debug, displaydoc::Display, derive_new::new)]
-    pub struct $name {
+    $vis struct $name {
       $(
         $(#[$($field_meta)*])*
         $field: $field_ty,
@@ -34,7 +34,7 @@ macro_rules! define_error {
       }
     }
 
-    impl Diagnostic for $name {
+    impl crate::parse::error::Diagnostic for $name {
       fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         Display::fmt(self, f)
       }
@@ -43,7 +43,7 @@ macro_rules! define_error {
 
   (
     $(#[$($m:tt)*])+
-    pub struct $name:ident {
+    $vis:vis struct $name:ident {
       $(
         $(#[$($field_meta:tt)*])*
         $field:ident: $field_ty:ty,
@@ -53,7 +53,7 @@ macro_rules! define_error {
     define_error! {
       @impl
       $(#[$($m)*])+
-      pub struct $name {
+      $vis struct $name {
         /// Error span
         span: Span,
         $(
@@ -66,12 +66,12 @@ macro_rules! define_error {
 
   (
     $(#[$($m:tt)*])+
-    pub struct $name:ident;
+    $vis:vis struct $name:ident;
   ) => {
     define_error! {
       @impl
       $(#[$($m)*])+
-      pub struct $name {
+      $vis struct $name {
         /// Error span
         span: Span,
       }
@@ -82,3 +82,4 @@ macro_rules! define_error {
 pub(crate) mod ast;
 pub(crate) mod lex;
 pub(crate) mod parse;
+pub(crate) mod utils;

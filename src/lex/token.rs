@@ -6,7 +6,7 @@ use alloc::rc::Rc;
 use core::{
   convert::TryFrom,
   fmt,
-  fmt::Debug,
+  fmt::{Debug, Display, Write},
   hash::{Hash, Hasher},
 };
 use derive_more::From;
@@ -19,10 +19,9 @@ pub trait Spanned: private::Sealed {
   fn span(&self) -> Span;
 }
 
-pub trait Tok: IntoToken + Spanned + 'static {
+pub trait Tok: Debug + Display + IntoToken + Spanned + 'static {
   /// Token display name - used for error messages.
   const NAME: &'static str;
-  const EOF: Option<bool>;
 
   #[inline]
   fn name(&self) -> &'static str {
@@ -30,87 +29,6 @@ pub trait Tok: IntoToken + Spanned + 'static {
   }
 
   fn peek(cursor: Cursor) -> bool;
-}
-
-/// End of file token
-#[derive(Clone, Copy)]
-pub struct EndOfFile {
-  span: Span,
-}
-
-impl PartialEq for EndOfFile {
-  #[inline]
-  fn eq(&self, _: &EndOfFile) -> bool {
-    true
-  }
-}
-
-impl Eq for EndOfFile {}
-
-impl Hash for EndOfFile {
-  #[inline]
-  fn hash<H: Hasher>(&self, _: &mut H) {}
-}
-
-impl Debug for EndOfFile {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    write!(f, "$EOF")
-  }
-}
-
-impl private::Sealed for EndOfFile {}
-impl Spanned for EndOfFile {
-  #[inline]
-  fn span(&self) -> Span {
-    self.span
-  }
-}
-
-impl Tok for EndOfFile {
-  const EOF: Option<bool> = Some(true);
-  const NAME: &'static str = "end of file";
-
-  fn peek(cursor: Cursor) -> bool {
-    match cursor.token() {
-      Token::EndOfFile(_) => true,
-      _ => false,
-    }
-  }
-}
-
-impl IntoToken for EndOfFile {
-  #[inline]
-  fn into_token(self) -> Result<Token, super::error::ErrorToken> {
-    Ok(self.into())
-  }
-}
-
-impl Peek for EndOfFile {
-  type Token = Self;
-}
-
-impl Parse for EndOfFile {
-  fn parse(input: ParseStream) -> crate::parse::error::Result<Self> {
-    input.step(|cursor| {
-      let cursor = *cursor;
-      cursor
-        .of_type::<Self>()
-        .ok_or_else(|| ParseError::expected_token(cursor.span(), Self::NAME))
-    })
-  }
-}
-
-impl EndOfFile {
-  pub const fn new(span: Span) -> Self {
-    EndOfFile { span }
-  }
-
-  #[cfg(test)]
-  #[inline]
-  #[allow(dead_code)]
-  pub fn from_range(range: std::ops::Range<usize>) -> Self {
-    Self::new(Span::from_range(range))
-  }
 }
 
 /// Identifier token
@@ -147,6 +65,12 @@ impl Debug for Ident {
   }
 }
 
+impl Display for Ident {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    f.write_str(&self.name)
+  }
+}
+
 impl private::Sealed for Ident {}
 impl Spanned for Ident {
   #[inline]
@@ -156,14 +80,10 @@ impl Spanned for Ident {
 }
 
 impl Tok for Ident {
-  const EOF: Option<bool> = Some(false);
   const NAME: &'static str = "ident";
 
   fn peek(cursor: Cursor) -> bool {
-    match cursor.token() {
-      Token::Ident(_) => true,
-      _ => false,
-    }
+    cursor.peek_token::<Self>().is_some()
   }
 }
 
@@ -183,7 +103,7 @@ impl Parse for Ident {
     input.step(|cursor| {
       let cursor = *cursor;
       cursor
-        .of_type::<Self>()
+        .token::<Self>()
         .ok_or_else(|| ParseError::expected_token(cursor.span(), Self::NAME))
     })
   }
@@ -191,6 +111,7 @@ impl Parse for Ident {
 
 impl Ident {
   pub fn new(name: impl Into<Rc<str>>, span: Span) -> Self {
+    // TODO: Validate name isn't a keyword & is a valid identifier
     Ident {
       name: name.into(),
       span,
@@ -239,6 +160,12 @@ impl Debug for Number {
   }
 }
 
+impl Display for Number {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    f.write_str(&self.value)
+  }
+}
+
 impl private::Sealed for Number {}
 
 impl Spanned for Number {
@@ -249,14 +176,10 @@ impl Spanned for Number {
 }
 
 impl Tok for Number {
-  const EOF: Option<bool> = Some(false);
   const NAME: &'static str = "number";
 
   fn peek(cursor: Cursor) -> bool {
-    match cursor.token() {
-      Token::Number(_) => true,
-      _ => false,
-    }
+    cursor.peek_token::<Self>().is_some()
   }
 }
 
@@ -276,7 +199,7 @@ impl Parse for Number {
     input.step(|cursor| {
       let cursor = *cursor;
       cursor
-        .of_type::<Self>()
+        .token::<Self>()
         .ok_or_else(|| ParseError::expected_token(cursor.span(), Self::NAME))
     })
   }
@@ -284,6 +207,7 @@ impl Parse for Number {
 
 impl Number {
   pub fn new(value: impl Into<Rc<str>>, span: Span) -> Self {
+    // TODO: Validate number
     Number {
       value: value.into(),
       span,
@@ -345,6 +269,27 @@ impl Debug for String {
   }
 }
 
+impl Display for String {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    let mut buf = alloc::string::String::with_capacity(self.value.len() + 2);
+    for c in self.value.chars() {
+      match c {
+        '\t' => buf.push_str("\\t"),
+        '\n' => buf.push_str("\\n"),
+        '\\' => buf.push_str("\\\\"),
+        '\'' => buf.push('\''),
+        '"' => buf.push_str("\\\""),
+        _ if !crate::utils::printable::is_printable(c) => {
+          write!(buf, "\\u{:x}", c as u32)?;
+        }
+        c => buf.push(c),
+      }
+    }
+
+    f.write_str(&buf)
+  }
+}
+
 impl private::Sealed for String {}
 
 impl Spanned for String {
@@ -355,14 +300,10 @@ impl Spanned for String {
 }
 
 impl Tok for String {
-  const EOF: Option<bool> = Some(false);
   const NAME: &'static str = "string";
 
   fn peek(cursor: Cursor) -> bool {
-    match cursor.token() {
-      Token::String(_) => true,
-      _ => false,
-    }
+    cursor.peek_token::<Self>().is_some()
   }
 }
 
@@ -382,7 +323,7 @@ impl Parse for String {
     input.step(|cursor| {
       let cursor = *cursor;
       cursor
-        .of_type::<Self>()
+        .token::<Self>()
         .ok_or_else(|| ParseError::expected_token(cursor.span(), Self::NAME))
     })
   }
@@ -427,7 +368,7 @@ pub enum Token {
   Keyword(Keyword),
   Operator(Operator),
   Symbol(Symbol),
-  EndOfFile(EndOfFile),
+  // EndOfFile(EndOfFile),
 }
 
 impl Debug for Token {
@@ -440,7 +381,21 @@ impl Debug for Token {
       Token::Keyword(t) => Debug::fmt(t, f),
       Token::Operator(t) => Debug::fmt(t, f),
       Token::Symbol(t) => Debug::fmt(t, f),
-      Token::EndOfFile(t) => Debug::fmt(t, f),
+      // Token::EndOfFile(t) => Debug::fmt(t, f),
+    }
+  }
+}
+
+impl Display for Token {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    match self {
+      Token::Ident(t) => Display::fmt(t, f),
+      Token::Number(t) => Display::fmt(t, f),
+      Token::String(t) => Display::fmt(t, f),
+      Token::Keyword(t) => Display::fmt(t, f),
+      Token::Operator(t) => Display::fmt(t, f),
+      Token::Symbol(t) => Display::fmt(t, f),
+      // Token::EndOfFile(t) => Display::fmt(t, f),
     }
   }
 }
@@ -456,13 +411,12 @@ impl Spanned for Token {
       Token::Keyword(t) => t.span(),
       Token::Operator(t) => t.span(),
       Token::Symbol(t) => t.span(),
-      Token::EndOfFile(t) => t.span(),
+      // Token::EndOfFile(t) => t.span(),
     }
   }
 }
 
 impl Tok for Token {
-  const EOF: Option<bool> = None;
   const NAME: &'static str = "token";
 
   fn name(&self) -> &'static str {
@@ -473,13 +427,13 @@ impl Tok for Token {
       Token::Keyword(t) => t.name(),
       Token::Operator(t) => t.name(),
       Token::Symbol(t) => t.name(),
-      Token::EndOfFile(t) => t.name(),
+      // Token::EndOfFile(t) => t.name(),
     }
   }
 
   #[inline]
-  fn peek(_: Cursor) -> bool {
-    true
+  fn peek(cursor: Cursor) -> bool {
+    cursor.peek_token::<Token>().is_some()
   }
 }
 
@@ -499,7 +453,7 @@ impl Parse for Token {
     input.step(|cursor| {
       let cursor = *cursor;
       cursor
-        .of_type::<Self>()
+        .token::<Self>()
         .ok_or_else(|| ParseError::expected_token(cursor.span(), Self::NAME))
     })
   }
@@ -539,87 +493,70 @@ impl_try_from_token!(String);
 impl_try_from_token!(Keyword);
 impl_try_from_token!(Operator);
 impl_try_from_token!(Symbol);
-impl_try_from_token!(EndOfFile);
+// impl_try_from_token!(EndOfFile);
 
-macro_rules! define_keywords {
-  ($($token:tt pub struct $name:ident #[$doc:meta])*) => {
-    #[derive(Copy, Clone, From, PartialEq, Eq, Hash)]
-    pub enum Keyword {
-      $(
-        $name($name),
-      )*
-    }
-
-    impl private::Sealed for Keyword {}
-
-    impl Spanned for Keyword {
-      fn span(&self) -> Span {
-        match self {
-          $(
-            Self::$name(t) => t.span(),
-          )*
-        }
-      }
-    }
-
-    impl Tok for Keyword {
-      const EOF: Option<bool> = Some(false);
-      const NAME: &'static str = "keyword";
-
-      fn name(&self) -> &'static str {
-        match self {
-          $(
-            Self::$name(t) => t.name(),
-          )*
-        }
-      }
+macro_rules! define_token_kind {
+  (@impl $name:ident $value:expr ; Parse) => {
+    impl Tok for $name {
+      const NAME: &'static str = $value;
 
       fn peek(cursor: Cursor) -> bool {
-        match cursor.token() {
-          Token::Keyword(_) => true,
-          _ => false,
-        }
+        cursor.peek_token::<Self>().is_some()
       }
     }
 
-    impl IntoToken for Keyword {
-      #[inline]
-      fn into_token(self) -> Result<Token, super::error::ErrorToken> {
-        Ok(self.into())
-      }
-    }
-
-    impl Peek for Keyword {
-      type Token = Self;
-    }
-
-    impl Parse for Keyword {
+    impl Parse for $name {
       fn parse(input: ParseStream) -> crate::parse::error::Result<Self> {
         input.step(|cursor| {
           let cursor = *cursor;
           cursor
-            .of_type::<Self>()
+            .token::<Self>()
             .ok_or_else(|| ParseError::expected_token(cursor.span(), Self::NAME))
         })
       }
     }
 
-    impl Debug for Keyword {
-      fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-          $(
-            Self::$name(t) => Debug::fmt(t, f),
-          )*
-        }
+    impl Peek for $name {
+      type Token = Self;
+    }
+  };
+
+  (@impl $name:ident $value:expr ; Group) => {
+    impl Tok for $name {
+      const NAME: &'static str = $value;
+
+      #[inline]
+      fn peek(_: Cursor) -> bool {
+        false
       }
     }
+  };
 
+  (@append $ctx:tt [$($processed:tt)*] $rest:tt {
+    $(token! {
+      $(#[$($m:tt)*])*
+      $name:ident($($token_trait:ident,)*)
+      => $value:expr
+    })*
+  }) => {
+    define_token_kind! {
+      @next
+      $ctx
+      [$($processed)* $({ $(#[$($m)*])* $name($($token_trait,)*) => $value })*]
+      $rest
+    }
+  };
+
+  (@next ($inner:ident $group:ident $group_name:expr) [$({
+    $(#[$($m:tt)*])*
+    $name:ident($($token_trait:ident,)*) => $value:expr
+  })*] {}) => {
     $(
-      #[derive(Copy, Clone, From)]
-      #[$doc]
+      $(#[$($m)*])*
+      #[derive(Clone, Copy)]
       pub struct $name {
         /// Token span
-        pub span: Span,
+        span: Span,
       }
 
       impl $name {
@@ -649,6 +586,12 @@ macro_rules! define_keywords {
         }
       }
 
+      impl Display for $name {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+          f.write_str($value)
+        }
+      }
+
       impl PartialEq for $name {
         #[inline]
         fn eq(&self, _other: &Self) -> bool {
@@ -671,18 +614,6 @@ macro_rules! define_keywords {
         }
       }
 
-      impl Tok for $name {
-        const EOF: Option<bool> = Some(false);
-        const NAME: &'static str = $token;
-
-        fn peek(cursor: Cursor) -> bool {
-          match cursor.token() {
-            Token::Keyword(Keyword::$name(_)) => true,
-            _ => false,
-          }
-        }
-      }
-
       impl IntoToken for $name {
         #[inline]
         fn into_token(self) -> Result<Token, super::error::ErrorToken> {
@@ -690,60 +621,13 @@ macro_rules! define_keywords {
         }
       }
 
-      impl Peek for $name {
-        type Token = Self;
-      }
-
-      impl Parse for $name {
-        fn parse(input: ParseStream) -> crate::parse::error::Result<Self> {
-          input.step(|cursor| {
-            let cursor = *cursor;
-            cursor
-              .of_type::<Self>()
-              .ok_or_else(|| ParseError::expected_token(cursor.span(), Self::NAME))
-          })
-        }
-      }
-
-      impl From<$name> for Token {
-        #[inline]
-        fn from(t: $name) -> Token {
-          Token::Keyword(Keyword::$name(t))
-        }
-      }
-
-      impl TryFrom<Keyword> for $name {
-        type Error = Keyword;
-
-        #[inline]
-        fn try_from(keyword: Keyword) -> Result<$name, Keyword> {
-          match keyword {
-            Keyword::$name(t) => Ok(t),
-            kw => Err(kw),
-          }
-        }
-      }
-
-      impl<'a> TryFrom<&'a Keyword> for &'a $name {
-        type Error = &'a Keyword;
-
-        #[inline]
-        fn try_from(keyword: &'a Keyword) -> Result<&'a $name, &'a Keyword> {
-          match keyword {
-            Keyword::$name(t) => Ok(t),
-            kw => Err(kw),
-          }
-        }
-      }
-
       impl TryFrom<Token> for $name {
         type Error = Token;
 
-        #[inline]
-        fn try_from(token: Token) -> Result<$name, Token> {
+        fn try_from(token: Token) -> Result<Self, Self::Error> {
           match token {
-            Token::Keyword(Keyword::$name(t)) => Ok(t),
-            token => Err(token),
+            Token::$group($group::$name(t)) => Ok(t),
+            t => Err(t),
           }
         }
       }
@@ -751,261 +635,49 @@ macro_rules! define_keywords {
       impl<'a> TryFrom<&'a Token> for &'a $name {
         type Error = &'a Token;
 
-        #[inline]
-        fn try_from(token: &'a Token) -> Result<&'a $name, &'a Token> {
+        fn try_from(token: &'a Token) -> Result<Self, Self::Error> {
           match token {
-            Token::Keyword(Keyword::$name(t)) => Ok(t),
-            token => Err(token),
+            Token::$group($group::$name(t)) => Ok(t),
+            t => Err(t),
           }
         }
       }
-    )*
-  }
-}
 
-macro_rules! define_operators {
-  ($($token:tt pub struct $name:ident #[$doc:meta])*) => {
-    #[derive(Copy, Clone, From, PartialEq, Eq, Hash)]
-    pub enum Operator {
+      impl From<$name> for Token {
+        #[inline]
+        fn from(t: $name) -> Token {
+          Token::$group($group::$name(t))
+        }
+      }
+
+      $(define_token_kind! {
+        @impl
+        $name
+        $value
+        ; $token_trait
+      })*
+    )*
+
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, From)]
+    pub enum $group {
       $(
+        $(#[$($m)*])*
         $name($name),
       )*
     }
 
-    impl private::Sealed for Operator {}
-
-    impl Spanned for Operator {
-      fn span(&self) -> Span {
-        match self {
-          $(
-            Self::$name(t) => t.span(),
-          )*
-        }
-      }
-    }
-
-    impl Tok for Operator {
-      const EOF: Option<bool> = Some(false);
-      const NAME: &'static str = "operator";
-
-      fn name(&self) -> &'static str {
-        match self {
-          $(
-            Self::$name(t) => t.name(),
-          )*
-        }
-      }
-
-      fn peek(cursor: Cursor) -> bool {
-        match cursor.token() {
-          Token::Operator(_) => true,
-          _ => false,
-        }
-      }
-    }
-
-    impl IntoToken for Operator {
-      #[inline]
-      fn into_token(self) -> Result<Token, super::error::ErrorToken> {
-        Ok(self.into())
-      }
-    }
-
-    impl Peek for Operator {
-      type Token = Self;
-    }
-
-    impl Parse for Operator {
-      fn parse(input: ParseStream) -> crate::parse::error::Result<Self> {
-        input.step(|cursor| {
-          let cursor = *cursor;
-          cursor
-            .of_type::<Self>()
-            .ok_or_else(|| ParseError::expected_token(cursor.span(), Self::NAME))
-        })
-      }
-    }
-
-    impl Debug for Operator {
-      fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-          $(
-            Self::$name(t) => Debug::fmt(t, f),
-          )*
-        }
-      }
-    }
-
-    impl Operator {
-      pub fn get(op: &str, span: Span) -> Option<Self> {
-        match op {
-          $($token => Some(Self::$name($name::new(span))),)*
+    impl $group {
+      #[allow(dead_code)]
+      pub(crate) fn get(token: &str, span: Span) -> Option<Self> {
+        match token {
+          $($value => Some($name::new(span).into()),)*
           _ => None,
         }
       }
     }
 
-    $(
-      #[derive(Copy, Clone, From)]
-      #[$doc]
-      pub struct $name {
-        /// Token span
-        pub span: Span,
-      }
-
-      impl $name {
-        #[inline]
-        pub const fn new(span: Span) -> Self {
-          Self { span }
-        }
-
-        #[cfg(test)]
-        #[inline]
-        #[allow(dead_code)]
-        pub const fn from_range(range: std::ops::Range<usize>) -> Self {
-          Self::new(Span::from_range(range))
-        }
-      }
-
-      impl Default for $name {
-        #[inline]
-        fn default() -> Self {
-          Self::new(Span::default())
-        }
-      }
-
-      impl Debug for $name {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-          f.write_str(stringify!($name))
-        }
-      }
-
-      impl PartialEq for $name {
-        #[inline]
-        fn eq(&self, _other: &Self) -> bool {
-          true
-        }
-      }
-
-      impl Eq for $name {}
-
-      impl Hash for $name {
-        fn hash<H: Hasher>(&self, _state: &mut H) {}
-      }
-
-      impl private::Sealed for $name {}
-
-      impl Spanned for $name {
-        #[inline]
-        fn span(&self) -> Span {
-          self.span
-        }
-      }
-
-      impl Tok for $name {
-        const EOF: Option<bool> = Some(false);
-        const NAME: &'static str = $token;
-
-        fn peek(cursor: Cursor) -> bool {
-          match cursor.token() {
-            Token::Operator(Operator::$name(_)) => true,
-            _ => false,
-          }
-        }
-      }
-
-      impl IntoToken for $name {
-        #[inline]
-        fn into_token(self) -> Result<Token, super::error::ErrorToken> {
-          Ok(self.into())
-        }
-      }
-
-      impl Peek for $name {
-        type Token = Self;
-      }
-
-      impl Parse for $name {
-        fn parse(input: ParseStream) -> crate::parse::error::Result<Self> {
-          input.step(|cursor| {
-            let cursor = *cursor;
-            cursor
-              .of_type::<Self>()
-              .ok_or_else(|| ParseError::expected_token(cursor.span(), Self::NAME))
-          })
-        }
-      }
-
-      impl From<$name> for Token {
-        #[inline]
-        fn from(t: $name) -> Token {
-          Token::Operator(Operator::$name(t))
-        }
-      }
-
-      impl TryFrom<Operator> for $name {
-        type Error = Operator;
-
-        #[inline]
-        fn try_from(operator: Operator) -> Result<$name, Operator> {
-          match operator {
-            Operator::$name(t) => Ok(t),
-            op => Err(op),
-          }
-        }
-      }
-
-      impl<'a> TryFrom<&'a Operator> for &'a $name {
-        type Error = &'a Operator;
-
-        #[inline]
-        fn try_from(operator: &'a Operator) -> Result<&'a $name, &'a Operator> {
-          match operator {
-            Operator::$name(t) => Ok(t),
-            op => Err(op),
-          }
-        }
-      }
-
-      impl TryFrom<Token> for $name {
-        type Error = Token;
-
-        #[inline]
-        fn try_from(token: Token) -> Result<$name, Token> {
-          match token {
-            Token::Operator(Operator::$name(t)) => Ok(t),
-            token => Err(token),
-          }
-        }
-      }
-
-      impl<'a> TryFrom<&'a Token> for &'a $name {
-        type Error = &'a Token;
-
-        #[inline]
-        fn try_from(token: &'a Token) -> Result<&'a $name, &'a Token> {
-          match token {
-            Token::Operator(Operator::$name(t)) => Ok(t),
-            token => Err(token),
-          }
-        }
-      }
-    )*
-  };
-}
-
-macro_rules! define_symbols {
-  ($($token:tt pub struct $name:ident #[$doc:meta])*) => {
-    #[derive(Copy, Clone, From, PartialEq, Eq, Hash)]
-    pub enum Symbol {
-      $(
-        $name($name),
-      )*
-    }
-
-    impl private::Sealed for Symbol {}
-
-    impl Spanned for Symbol {
+    impl private::Sealed for $group {}
+    impl Spanned for $group {
       fn span(&self) -> Span {
         match self {
           $(
@@ -1015,49 +687,7 @@ macro_rules! define_symbols {
       }
     }
 
-    impl Tok for Symbol {
-      const EOF: Option<bool> = Some(false);
-      const NAME: &'static str = "symbol";
-
-      fn name(&self) -> &'static str {
-        match self {
-          $(
-            Self::$name(t) => t.name(),
-          )*
-        }
-      }
-
-      fn peek(cursor: Cursor) -> bool {
-        match cursor.token() {
-          Token::Symbol(_) => true,
-          _ => false,
-        }
-      }
-    }
-
-    impl IntoToken for Symbol {
-      #[inline]
-      fn into_token(self) -> Result<Token, super::error::ErrorToken> {
-        Ok(self.into())
-      }
-    }
-
-    impl Peek for Symbol {
-      type Token = Self;
-    }
-
-    impl Parse for Symbol {
-      fn parse(input: ParseStream) -> crate::parse::error::Result<Self> {
-        input.step(|cursor| {
-          let cursor = *cursor;
-          cursor
-            .of_type::<Self>()
-            .ok_or_else(|| ParseError::expected_token(cursor.span(), Self::NAME))
-        })
-      }
-    }
-
-    impl Debug for Symbol {
+    impl Debug for $group {
       fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
           $(
@@ -1067,156 +697,115 @@ macro_rules! define_symbols {
       }
     }
 
-    $(
-      #[derive(Copy, Clone, From)]
-      #[$doc]
-      pub struct $name {
-        /// Token span
-        pub span: Span,
-      }
-
-      impl $name {
-        #[inline]
-        pub const fn new(span: Span) -> Self {
-          Self { span }
-        }
-
-        #[cfg(test)]
-        #[inline]
-        #[allow(dead_code)]
-        pub const fn from_range(range: std::ops::Range<usize>) -> Self {
-          Self::new(Span::from_range(range))
+    impl Display for $group {
+      fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+          $(
+            Self::$name(t) => Display::fmt(t, f),
+          )*
         }
       }
+    }
 
-      impl Default for $name {
-        #[inline]
-        fn default() -> Self {
-          Self::new(Span::default())
-        }
+    impl IntoToken for $group {
+      #[inline]
+      fn into_token(self) -> Result<Token, super::error::ErrorToken> {
+        Ok(self.into())
       }
+    }
 
-      impl Debug for $name {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-          f.write_str(stringify!($name))
-        }
+    impl Tok for $group {
+      const NAME: &'static str = $group_name;
+
+      fn peek(cursor: Cursor) -> bool {
+        $(
+          <$name as Tok>::peek(cursor) ||
+        )* false
       }
+    }
+  };
 
-      impl PartialEq for $name {
-        #[inline]
-        fn eq(&self, _other: &Self) -> bool {
-          true
-        }
-      }
+  (@next ($inner:ident $group:ident $group_value:expr) $processed:tt {
+    $(#[$($m:tt)*])* $name:ident($($t:tt)*),$($rest:tt)*
+  }) => {
+    $inner! {
+      define_token_kind
+      (
+        @append
+        ($inner $group $group_value)    // context
+        $processed  // processed
+        {$($rest)*} // rest
+      )
+      { $(#[$($m)*])* $name($($t)*) }
+    }
+  };
 
-      impl Eq for $name {}
-
-      impl Hash for $name {
-        fn hash<H: Hasher>(&self, _state: &mut H) {}
-      }
-
-      impl private::Sealed for $name {}
-
-      impl Spanned for $name {
-        #[inline]
-        fn span(&self) -> Span {
-          self.span
-        }
-      }
-
-      impl Tok for $name {
-        const EOF: Option<bool> = Some(false);
-        const NAME: &'static str = $token;
-
-        fn peek(cursor: Cursor) -> bool {
-          match cursor.token() {
-            Token::Symbol(Symbol::$name(_)) => true,
-            _ => false,
-          }
-        }
-      }
-
-      impl IntoToken for $name {
-        #[inline]
-        fn into_token(self) -> Result<Token, super::error::ErrorToken> {
-          Ok(self.into())
-        }
-      }
-
-      impl Peek for $name {
-        type Token = Self;
-      }
-
-      impl Parse for $name {
-        fn parse(input: ParseStream) -> crate::parse::error::Result<Self> {
-          input.step(|cursor| {
-            let cursor = *cursor;
-            cursor
-              .of_type::<Self>()
-              .ok_or_else(|| ParseError::expected_token(cursor.span(), Self::NAME))
-          })
-        }
-      }
-
-      impl From<$name> for Token {
-        #[inline]
-        fn from(t: $name) -> Token {
-          Token::Symbol(Symbol::$name(t))
-        }
-      }
-
-      impl TryFrom<Symbol> for $name {
-        type Error = Symbol;
-
-        #[inline]
-        fn try_from(symbol: Symbol) -> Result<$name, Symbol> {
-          match symbol {
-            Symbol::$name(t) => Ok(t),
-            kw => Err(kw),
-          }
-        }
-      }
-
-      impl<'a> TryFrom<&'a Symbol> for &'a $name {
-        type Error = &'a Symbol;
-
-        #[inline]
-        fn try_from(symbol: &'a Symbol) -> Result<&'a $name, &'a Symbol> {
-          match symbol {
-            Symbol::$name(t) => Ok(t),
-            kw => Err(kw),
-          }
-        }
-      }
-
-      impl TryFrom<Token> for $name {
-        type Error = Token;
-
-        #[inline]
-        fn try_from(token: Token) -> Result<$name, Token> {
-          match token {
-            Token::Symbol(Symbol::$name(t)) => Ok(t),
-            token => Err(token),
-          }
-        }
-      }
-
-      impl<'a> TryFrom<&'a Token> for &'a $name {
-        type Error = &'a Token;
-
-        #[inline]
-        fn try_from(token: &'a Token) -> Result<&'a $name, &'a Token> {
-          match token {
-            Token::Symbol(Symbol::$name(t)) => Ok(t),
-            token => Err(token),
-          }
-        }
-      }
-    )*
+  ($item_macro:ident !($group:ident, $group_value:expr) $($t:tt)*) => {
+    define_token_kind! {
+      @next
+      ($item_macro $group $group_value) // context
+      []                   // processed
+      { $($t)* }           // rest
+    }
   };
 }
 
-define_keywords! {
+macro_rules! token_item {
+  ($cont:ident ($($args:tt)*) {
+    $(#[$($m:tt)*])* $name:ident($value:expr)
+  }) => {
+    $cont! {
+      $($args)*
+      {
+        token! { $(#[$($m)*])* $name(Parse,) => $value }
+      }
+    }
+  };
+}
+
+macro_rules! symbol_item {
+  ($cont:ident ($($args:tt)*) {
+    group(
+      $(#[$($open_meta:tt)*])*
+      $open:ident($open_value:expr),
+
+      $(#[$($close_meta:tt)*])*
+      $close:ident($close_value:expr),
+    )
+  }) => {
+    $cont! {
+      $($args)*
+      {
+        token! { $(#[$($open_meta)*])* $open(Parse,) => $open_value }
+        token! { $(#[$($close_meta)*])* $close(Group,) => $close_value }
+      }
+    }
+  };
+
+  ($($t:tt)*) => {
+    token_item! { $($t)* }
+  }
+}
+
+macro_rules! define_token_kind_simple {
+  (
+    $item_macro:ident !($group:ident, $group_value:expr)
+    $(
+      $value:tt pub struct $name:ident #[$($m:tt)*]
+    )*
+  ) => {
+    define_token_kind! {
+      $item_macro!($group, $group_value)
+      $(
+        #[$($m)*]
+        $name($value),
+      )*
+    }
+  };
+}
+
+define_token_kind_simple! {
+  token_item!(Keyword, "keyword")
   "assert"          pub struct Assert          /// `assert`
   "else"            pub struct Else            /// `else`
   "error"           pub struct Error           /// `error`
@@ -1236,11 +825,16 @@ define_keywords! {
   "true"            pub struct True            /// `true`
 }
 
-define_operators! {
+define_token_kind_simple! {
+  token_item!(Operator, "operator")
   "!"               pub struct Not                      /// `!`
   "="               pub struct Assign                   /// `=`
   ":"               pub struct Colon                    /// `:`
   "::"              pub struct DoubleColon              /// `::`
+  ":::"             pub struct TripleColon              /// `:::`
+  "+:"              pub struct PlusColon                /// `+:`
+  "+::"             pub struct PlusDoubleColon          /// `+::`
+  "+:::"            pub struct PlusTripleColon          /// `+:::`
   "*"               pub struct Mul                      /// `*`
   "/"               pub struct Div                      /// `/`
   "%"               pub struct Mod                      /// `%`
@@ -1262,15 +856,181 @@ define_operators! {
   "~"               pub struct BitNeg                   /// `~`
 }
 
-define_symbols! {
-  "{"               pub struct LeftBrace       /// `{`
-  "}"               pub struct RightBrace      /// `}`
-  "["               pub struct LeftBracket     /// `[`
-  "]"               pub struct RightBracket    /// `]`
-  "("               pub struct LeftParen       /// `(`
-  ")"               pub struct RightParen      /// `)`
-  ","               pub struct Comma           /// `,`
-  "."               pub struct Dot             /// `.`
-  ";"               pub struct SemiColon       /// `;`
-  "$"               pub struct Dollar          /// `$`
+//trace_macros!(true);
+define_token_kind! {
+  symbol_item!(Symbol, "symbol")
+
+  group(
+    /// `{`
+    BraceL("{"),
+
+    /// `}`
+    BraceR("}"),
+  ),
+  group(
+    /// `[`
+    BracketL("["),
+
+    /// `]`
+    BracketR("]"),
+  ),
+  group(
+    /// `(`
+    ParenL("\u{0028}"),
+
+    /// `)`
+    ParenR("\u{0029}"),
+  ),
+
+  /// `,`
+  Comma(","),
+
+  ///`.`
+  Dot("."),
+
+  /// `;`
+  SemiColon(";"),
+
+  /// `$`
+  Dollar("$"),
+}
+trace_macros!(false);
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::{
+    lex::span::FileId,
+    parse::buffer::{Braces, Brackets, Delimiter, Parentheses},
+  };
+  use test_case::test_case;
+
+  #[test_case("assert", Assert::new)]
+  #[test_case("else", Else::new)]
+  #[test_case("error", Error::new)]
+  #[test_case("false", False::new)]
+  #[test_case("for", For::new)]
+  #[test_case("function", Function::new)]
+  #[test_case("if", If::new)]
+  #[test_case("import", Import::new)]
+  #[test_case("importstr", ImportStr::new)]
+  #[test_case("in", In::new)]
+  #[test_case("local", Local::new)]
+  #[test_case("null", Null::new)]
+  #[test_case("tailstrict", TailStrict::new)]
+  #[test_case("then", Then::new)]
+  #[test_case("self", SelfValue::new)]
+  #[test_case("super", Super::new)]
+  #[test_case("true", True::new)]
+  #[test_case("!", Not::new)]
+  #[test_case("=", Assign::new)]
+  #[test_case(":", Colon::new)]
+  #[test_case("::", DoubleColon::new)]
+  #[test_case("*", Mul::new)]
+  #[test_case("/", Div::new)]
+  #[test_case("%", Mod::new)]
+  #[test_case("+", Plus::new)]
+  #[test_case("-", Minus::new)]
+  #[test_case("<<", ShiftLeft::new)]
+  #[test_case(">>", ShiftRight::new)]
+  #[test_case("<", LessThan::new)]
+  #[test_case(">", GreaterThan::new)]
+  #[test_case("<=", LessThanOrEqual::new)]
+  #[test_case(">=", GreaterThanOrEqual::new)]
+  #[test_case("==", Equal::new)]
+  #[test_case("!=", NotEqual::new)]
+  #[test_case("&", BitAnd::new)]
+  #[test_case("^", BitXor::new)]
+  #[test_case("|", BitOr::new)]
+  #[test_case("&&", And::new)]
+  #[test_case("||", Or::new)]
+  #[test_case("~", BitNeg::new)]
+  #[test_case(",", Comma::new)]
+  #[test_case(".", Dot::new)]
+  #[test_case(";", SemiColon::new)]
+  #[test_case("$", Dollar::new)]
+  fn parse_token<T>(content: &str, ctor: impl Fn(Span) -> T)
+  where
+    T: Parse + Into<Token>,
+  {
+    let file = FileId::UNKNOWN;
+    let expected: Token = ctor(file.span(0..content.len())).into();
+    let parsed: T = crate::parse::parse(content, file).expect("parse");
+    let parsed: Token = parsed.into();
+    assert_eq!(parsed, expected);
+  }
+
+  // macro_rules! crate_parse_group_test {
+  //   ($name:ident, $content:expr, $kind:ident, $open:expr) => {
+  //     #[test]
+  //     fn $name() {
+  //       #[derive(Debug, PartialEq)]
+  //       struct Group {
+  //         open: <$kind as Delimiter>::Open,
+  //       }
+
+  //       impl Parse for Group {
+  //         fn parse(input: ParseStream) -> crate::parse::error::Result<Self> {
+  //           //assert!(input.peek::<$kind>());
+
+  //           input.step(|cursor| {
+  //             let cursor = *cursor;
+  //             cursor
+  //               .group($kind)
+  //               .map(|(cursor, open, _)| (Group { open }, cursor))
+  //               .ok_or_else(|| ParseError::expected_token(cursor.span(), stringify!($kind)))
+  //           })
+  //         }
+  //       }
+
+  //       let file = FileId::UNKNOWN;
+  //       let expected = Group { open: $open };
+  //       let parsed: Group = crate::parse::parse($content, file).expect("parse");
+  //       assert_eq!(parsed, expected);
+  //     }
+  //   };
+  // }
+
+  // // NOTE: range is ignored here
+  // crate_parse_group_test!(brace_group, "{}", Braces, BraceL::from_range(0..1));
+
+  // // NOTE: range is ignored here
+  // crate_parse_group_test!(bracket_group, "[]", Brackets, BracketL::from_range(0..1));
+
+  // // NOTE: range is ignored here
+  // crate_parse_group_test!(paren_group, "()", Parentheses, ParenL::from_range(0..1));
+
+  #[derive(Debug, PartialEq)]
+  struct Group<D: Delimiter> {
+    open: <D as Delimiter>::OpenToken,
+    close: <D as Delimiter>::CloseToken,
+  }
+
+  impl<D: Delimiter> Parse for Group<D> {
+    fn parse(input: ParseStream) -> crate::parse::error::Result<Self> {
+      assert!(input.peek::<D>());
+
+      input.step(|cursor| {
+        let cursor = *cursor;
+        cursor
+          .group(D::default())
+          .map(|(cursor, open, close, _)| (Group { open, close }, cursor))
+          .ok_or_else(|| ParseError::expected_token(cursor.span(), D::NAME))
+      })
+    }
+  }
+
+  #[test_case("{ }", Braces, BraceL::from_range(0..1), BraceR::from_range(2..3))]
+  #[test_case("[ ]", Brackets, BracketL::from_range(0..1), BracketR::from_range(2..3))]
+  #[test_case("( )", Parentheses, ParenL::from_range(0..1), ParenR::from_range(2..3))]
+  fn parse_group_test<D: Delimiter>(content: &str, _: D, open: D::OpenToken, close: D::CloseToken) {
+    let file = FileId::UNKNOWN;
+    let expected = Group::<D> { open, close };
+    let parsed: Group<D> = crate::parse::parse(content, file).expect("parse");
+    assert_eq!(parsed, expected);
+    assert_eq!(
+      (parsed.open.span(), parsed.close.span()),
+      (expected.open.span(), expected.close.span())
+    );
+  }
 }

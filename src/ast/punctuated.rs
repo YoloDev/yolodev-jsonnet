@@ -250,17 +250,45 @@ impl<T, P> Punctuated<T, P> {
   where
     P: Parse,
   {
-    let mut punctuated = Punctuated::new();
+    Self::parse_terminated_cont_with(input, parser, Punctuated::new())
+  }
+
+  pub fn parse_terminated_cont(input: ParseStream, punctuated: Punctuated<T, P>) -> Result<Self>
+  where
+    T: Parse,
+    P: Parse,
+  {
+    Self::parse_terminated_cont_with(input, T::parse, punctuated)
+  }
+
+  pub fn parse_terminated_cont_with(
+    input: ParseStream,
+    parser: fn(ParseStream) -> Result<T>,
+    mut punctuated: Punctuated<T, P>,
+  ) -> Result<Self>
+  where
+    P: Parse,
+  {
+    if !punctuated.empty_or_trailing() {
+      if input.is_empty() {
+        return Ok(punctuated);
+      }
+
+      let punct = input.parse()?;
+      punctuated.push_punct(punct);
+    }
 
     loop {
       if input.is_empty() {
         break;
       }
+
       let value = parser(input)?;
       punctuated.push_value(value);
       if input.is_empty() {
         break;
       }
+
       let punct = input.parse()?;
       punctuated.push_punct(punct);
     }
