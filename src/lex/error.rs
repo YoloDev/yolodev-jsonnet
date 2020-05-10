@@ -144,6 +144,8 @@ define_errors! {
   pub struct NumberJunkAfterDecimalPoint        /// Junk after decimal point
   pub struct NumberJunkAfterExponent            /// Junk after exponent
   pub struct NumberJunkAfterExponentSign        /// Junk after exponent sign
+  // TODO: Here we want data...
+  pub struct NumberParseError                   /// Failed to parse number
 
   // string errors
   pub struct StringUnterminated                 /// String unterminated

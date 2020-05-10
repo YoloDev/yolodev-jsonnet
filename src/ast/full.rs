@@ -119,9 +119,49 @@ macro_rules! ast_enum {
 }
 
 macro_rules! define_operator_kind {
+  (@kind [$name:ident => $kind:ident] [$($attrs_pub:tt)*] {
+    $($(#[$m:meta])* $variant:ident,)*
+  }) => {
+    #[derive(Eq, PartialEq, Hash, Clone, Copy, Debug)]
+    $($attrs_pub)* enum $kind {
+      $(
+        $(#[$m])* $variant,
+      )*
+    }
+
+    impl $name {
+      pub fn kind(&self) -> $kind {
+        match self {
+          $(
+            $name::$variant(_) => $kind::$variant,
+          )*
+        }
+      }
+    }
+
+    impl $kind {
+      pub fn default_token(self) -> $name {
+        match self {
+          $(
+            $kind::$variant => $name::$variant(Default::default()),
+          )*
+        }
+      }
+    }
+
+    impl From<$name> for $kind {
+      #[inline]
+      fn from(value: $name) -> $kind {
+        value.kind()
+      }
+    }
+  };
+
+  (@kind [$name:ident =>] $t1:tt $t2:tt) => {};
+
   (
     [$($attrs_pub:tt)*]
-    enum $name:ident($expect_name:expr) {$(
+    enum $name:ident($($kind_name:ident,)? $expect_name:literal) {$(
       $(#[$m:meta])* $variant:ident($inner:ty),
     )*}
   ) => {
@@ -207,6 +247,12 @@ macro_rules! define_operator_kind {
         )* false
       }
     }
+
+    define_operator_kind!(@kind [$name => $($kind_name)?] [$($attrs_pub)*] {
+      $(
+        $(#[$m])* $variant,
+      )*
+    });
   };
 
   ($($t:tt)*) => {
@@ -292,7 +338,7 @@ impl Into<Span> for SpanBuilder {
 }
 
 define_operator_kind! {
-  pub enum UnaryOperator("unary operator") {
+  pub enum UnaryOperator(UnaryOperatorKind, "unary operator") {
     /// !
     Not(Not),
 
@@ -379,37 +425,37 @@ define_operator_kind! {
 }
 
 define_operator_kind! {
-  pub enum ObjectFieldOperator("object field operator") {
+  pub enum ObjectFieldOperator(ObjectFieldOperatorKind, "object field operator") {
     /// `:`
-    Colon(Colon),
+    Default(Colon),
 
     /// `::`
-    DoubleColon(DoubleColon),
+    Hidden(DoubleColon),
 
     /// `:::`
-    TripleColon(TripleColon),
+    Public(TripleColon),
 
     /// `+:`
-    PlusColon(PlusColon),
+    Merge(PlusColon),
 
     /// `+::`
-    PlusDoubleColon(PlusDoubleColon),
+    MergeHidden(PlusDoubleColon),
 
     /// `+:::`
-    PlusTripleColon(PlusTripleColon),
+    MergePublic(PlusTripleColon),
   }
 }
 
 define_operator_kind! {
   pub enum ObjectFieldFunctionOperator("object field function operator") {
     /// `:`
-    Colon(Colon),
+    Default(Colon),
 
     /// `::`
-    DoubleColon(DoubleColon),
+    Hidden(DoubleColon),
 
     /// `:::`
-    TripleColon(TripleColon),
+    Public(TripleColon),
   }
 }
 
@@ -516,6 +562,13 @@ impl Argument {
       Self::Named(a) => Some(&a.name),
     }
   }
+
+  fn is_named(&self) -> bool {
+    match self {
+      Self::Named(_) => true,
+      Self::Positional(_) => false,
+    }
+  }
 }
 
 ast_struct! {
@@ -528,9 +581,44 @@ ast_struct! {
 }
 
 ast_struct! {
+  /// Object ident field name: `foo`.
+  #[derive(From)]
+  pub struct FieldNameIdent {
+    pub name: Ident,
+  }
+}
+
+ast_struct! {
+  /// Object ident field name: `"foo"`.
+  #[derive(From)]
+  pub struct FieldNameString {
+    pub name: String,
+  }
+}
+
+ast_struct! {
+  /// Object ident field name: `["foo"]`.
+  #[derive(From)]
+  pub struct FieldNameComputed {
+    pub left_bracket_token: BracketL,
+    pub name: Expr,
+    pub right_bracket_token: BracketR,
+  }
+}
+
+ast_enum! {
+  /// Object field name.
+  pub enum ObjectFieldName {
+    Ident(FieldNameIdent),
+    String(FieldNameString),
+    Computed(FieldNameComputed),
+  }
+}
+
+ast_struct! {
   /// Object id field: `foo: "bar"`.
-  pub struct ObjectFieldIdent {
-    pub field: Ident,
+  pub struct ObjectFieldValue {
+    pub name: ObjectFieldName,
     pub op: ObjectFieldOperator,
     pub value: Expr,
   }
@@ -539,31 +627,11 @@ ast_struct! {
 ast_struct! {
   /// Object id field: `foo(): "bar"`.
   pub struct ObjectFieldFunction {
-    pub field: Ident,
-    pub op: ObjectFieldFunctionOperator,
+    pub name: ObjectFieldName,
     pub left_paren_token: ParenL,
     pub params: Punctuated<Param, Comma>,
     pub right_paren_token: ParenR,
-    pub value: Expr,
-  }
-}
-
-ast_struct! {
-  /// Object computed field: `["foo"]: "bar"`.
-  pub struct ObjectFieldComputed {
-    pub left_bracket_token: BracketL,
-    pub field: Expr,
-    pub right_bracket_token: BracketR,
-    pub op: ObjectFieldOperator,
-    pub value: Expr,
-  }
-}
-
-ast_struct! {
-  /// Object computed field: `"foo": "bar"`.
-  pub struct ObjectFieldString {
-    pub field: String,
-    pub op: ObjectFieldOperator,
+    pub op: ObjectFieldFunctionOperator,
     pub value: Expr,
   }
 }
@@ -579,11 +647,9 @@ ast_struct! {
 ast_enum! {
   pub enum ObjectField {
     Assert(ObjectFieldAssert),
-    Ident(ObjectFieldIdent),
-    Computed(ObjectFieldComputed),
     Function(ObjectFieldFunction),
-    String(ObjectFieldString),
     Local(ObjectFieldLocal),
+    Value(ObjectFieldValue),
   }
 }
 
@@ -651,17 +717,7 @@ ast_struct! {
 }
 
 ast_struct! {
-  /// An index expression: `a[b]`.
-  pub struct ExprIndex {
-    pub target: Expr,
-    pub left_bracket_token: ParenL,
-    pub index: Expr,
-    pub right_bracket_token: ParenR,
-  }
-}
-
-ast_struct! {
-  /// An index expression: `a[b]`.
+  /// An slice expression: `a[b:c]`.
   pub struct ExprSlice {
     pub target: Expr,
     pub left_bracket_token: BracketL,
@@ -913,19 +969,30 @@ ast_struct! {
   }
 }
 
-impl TryFrom<ObjectFieldComputed> for ObjectCompField {
+impl TryFrom<ObjectFieldValue> for ObjectCompField {
   type Error = ParseError;
 
-  fn try_from(value: ObjectFieldComputed) -> Result<Self, Self::Error> {
+  fn try_from(value: ObjectFieldValue) -> Result<Self, Self::Error> {
+    define_error! {
+      /// object comprehentions required computed field names
+      struct CompFieldRequired;
+    }
+
     let colon_token = match value.op {
-      ObjectFieldOperator::Colon(c) => c,
+      ObjectFieldOperator::Default(c) => c,
+      //ObjectFieldOperator::PlusColon(c) => c.into(),
       op => return Err(ParseError::expected_token(op.span(), Colon::NAME)),
     };
 
+    let (left_bracket_token, field, right_bracket_token) = match value.name {
+      ObjectFieldName::Computed(f) => (f.left_bracket_token, f.name, f.right_bracket_token),
+      f => return Err(ParseError::new(CompFieldRequired::new(f.span()))),
+    };
+
     Ok(ObjectCompField {
-      left_bracket_token: value.left_bracket_token,
-      field: value.field,
-      right_bracket_token: value.right_bracket_token,
+      left_bracket_token,
+      field,
+      right_bracket_token,
       colon_token,
       value: value.value,
     })
@@ -966,7 +1033,6 @@ ast_enum! {
     If(ExprIf),
     Import(ExprImport),
     ImportStr(ExprImportStr),
-    Index(ExprIndex),
     InSuper(ExprInSuper),
     Local(ExprLocal),
     Null(ExprNull),
@@ -1213,7 +1279,7 @@ mod parsing {
         e = ExprApply {
           target: e,
           left_paren_token: parentheses!(input => group),
-          args: group.content.parse_terminated(Argument::parse)?,
+          args: validate_args(group.content.parse_terminated(Argument::parse)?)?,
           right_paren_token: group.close()?,
           tail_strict_token: input.parse()?,
         }
@@ -1314,7 +1380,7 @@ mod parsing {
           }
         }
 
-        ObjectField::Computed(f) => {
+        ObjectField::Value(f) => {
           comp_field = Some(ObjectCompField::try_from(*f)?);
           comma_token = punct;
           break;
@@ -1341,7 +1407,7 @@ mod parsing {
           }
         }
 
-        ObjectField::Computed(f) => {
+        ObjectField::Value(f) => {
           return Err(ParseError::new(TooManyFields::new(f.span())));
         }
 
@@ -1389,13 +1455,30 @@ mod parsing {
         return Err(ParseError::expected_token(inner.span(), Comma::NAME));
       }
 
-      if inner.peek::<Brackets>() {
-        fields.push(ObjectFieldComputed::parse(inner)?.into());
-      } else if inner.peek::<Ident>() {
-        if inner.peek2::<Parentheses>() {
-          fields.push(ObjectFieldFunction::parse(inner)?.into());
-        } else if inner.peek2::<ObjectFieldOperator>() {
-          fields.push(ObjectFieldIdent::parse(inner)?.into());
+      if inner.peek::<Brackets>() || inner.peek::<String>() || inner.peek::<Ident>() {
+        let name = ObjectFieldName::parse(inner)?;
+        if inner.peek::<Parentheses>() {
+          let paren_group;
+          fields.push(
+            ObjectFieldFunction {
+              name,
+              left_paren_token: parentheses!(inner => paren_group),
+              params: paren_group.content.parse_terminated(Param::parse)?,
+              right_paren_token: paren_group.close()?,
+              op: inner.parse()?,
+              value: inner.parse()?,
+            }
+            .into(),
+          )
+        } else if inner.peek::<ObjectFieldOperator>() {
+          fields.push(
+            ObjectFieldValue {
+              name,
+              op: inner.parse()?,
+              value: inner.parse()?,
+            }
+            .into(),
+          )
         } else {
           return Err(ParseError::expected_token2(
             inner.span(),
@@ -1403,8 +1486,6 @@ mod parsing {
             Parentheses::NAME,
           ));
         }
-      } else if inner.peek::<String>() {
-        fields.push(ObjectFieldString::parse(inner)?.into());
       } else if inner.peek::<Local>() {
         fields.push(ObjectFieldLocal::parse(inner)?.into());
       } else if inner.peek::<Assert>() {
@@ -1578,6 +1659,24 @@ mod parsing {
       items: Punctuated::parse_terminated_cont(&group.content, items)?,
       right_bracket_token: group.close()?,
     })
+  }
+
+  fn validate_args(args: Punctuated<Argument, Comma>) -> Result<Punctuated<Argument, Comma>> {
+    define_error! {
+      /// positional argument after named arguments
+      struct PositionalAfterNamedArg;
+    }
+
+    let mut named_arg = false;
+    for arg in args.iter() {
+      if arg.is_named() {
+        named_arg = true;
+      } else if named_arg {
+        return Err(ParseError::new(PositionalAfterNamedArg::new(arg.span())));
+      }
+    }
+
+    Ok(args)
   }
 
   macro_rules! impl_single_token_parse {
@@ -1894,33 +1993,54 @@ mod parsing {
     }
   }
 
-  impl Parse for ObjectFieldComputed {
+  impl Parse for FieldNameIdent {
+    fn parse(input: ParseStream) -> Result<Self> {
+      Ok(FieldNameIdent {
+        name: input.parse()?,
+      })
+    }
+  }
+
+  impl Parse for FieldNameString {
+    fn parse(input: ParseStream) -> Result<Self> {
+      Ok(FieldNameString {
+        name: input.parse()?,
+      })
+    }
+  }
+
+  impl Parse for FieldNameComputed {
     fn parse(input: ParseStream) -> Result<Self> {
       let group;
-      Ok(ObjectFieldComputed {
+      Ok(FieldNameComputed {
         left_bracket_token: brackets!(input => group),
-        field: group.content.parse()?,
+        name: group.content.parse()?,
         right_bracket_token: group.close()?,
-        op: input.parse()?,
-        value: input.parse()?,
       })
     }
   }
 
-  impl Parse for ObjectFieldIdent {
+  impl Parse for ObjectFieldName {
     fn parse(input: ParseStream) -> Result<Self> {
-      Ok(ObjectFieldIdent {
-        field: input.parse()?,
-        op: input.parse()?,
-        value: input.parse()?,
-      })
+      if input.peek::<Ident>() {
+        FieldNameIdent::parse(input).map(ObjectFieldName::from)
+      } else if input.peek::<String>() {
+        FieldNameString::parse(input).map(ObjectFieldName::from)
+      } else if input.peek::<Brackets>() {
+        FieldNameComputed::parse(input).map(ObjectFieldName::from)
+      } else {
+        Err(ParseError::expected_tokens(
+          input.span(),
+          &[Ident::NAME, String::NAME, BracketL::NAME],
+        ))
+      }
     }
   }
 
-  impl Parse for ObjectFieldString {
+  impl Parse for ObjectFieldValue {
     fn parse(input: ParseStream) -> Result<Self> {
-      Ok(ObjectFieldString {
-        field: input.parse()?,
+      Ok(ObjectFieldValue {
+        name: input.parse()?,
         op: input.parse()?,
         value: input.parse()?,
       })
@@ -1958,7 +2078,7 @@ mod parsing {
     fn parse(input: ParseStream) -> Result<Self> {
       let group;
       Ok(ObjectFieldFunction {
-        field: input.parse()?,
+        name: input.parse()?,
         left_paren_token: parentheses!(input => group),
         params: group.content.parse_terminated(Param::parse)?,
         right_paren_token: group.close()?,
@@ -2091,6 +2211,9 @@ mod tests {
   #[test_case("[][1:1:1]" ; "go_69")]
   #[test_case("a in b" ; "go_70")]
   #[test_case("{ x: if \"opt\" in super then \"x\" else \"y\" }" ; "go_71")]
+  // custom cases added
+  #[test_case("{\"foo\"(): 'bar'}" ; "custom_0")]
+  #[test_case("{[\"foo\"]()::: 'bar'}" ; "custom_1")]
   fn exprs(content: &str) {
     let file = FileId::UNKNOWN;
     let _: Expr =

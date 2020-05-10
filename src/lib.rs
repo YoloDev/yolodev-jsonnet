@@ -2,6 +2,8 @@
 #![feature(const_fn)]
 #![feature(trace_macros)]
 #![feature(ptr_offset_from)]
+#![feature(new_uninit)]
+#![feature(maybe_uninit_slice)]
 #![cfg_attr(test, feature(option_expect_none, box_patterns))]
 
 extern crate alloc;

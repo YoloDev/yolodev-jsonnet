@@ -585,6 +585,16 @@ impl<'a> Lexer<'a> {
     Ok(token::String::new(buf, kind, span).into())
   }
 
+  fn number(raw: &str, span: Span) -> Result<Token, ErrorToken> {
+    // (?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?
+    let num: f64 = match raw.parse() {
+      Ok(n) => n,
+      Err(_) => return Err(ErrorToken::NumberParseError(span.into())),
+    };
+
+    Ok(token::Number::new(num, span).into())
+  }
+
   fn token(raw: RawToken, span: Span) -> Result<Token, ErrorToken> {
     match raw {
       RawToken::KeywordAssert => Ok(token::Assert::new(span).into()),
@@ -605,7 +615,7 @@ impl<'a> Lexer<'a> {
       RawToken::KeywordSuper => Ok(token::Super::new(span).into()),
       RawToken::KeywordTrue => Ok(token::True::new(span).into()),
       RawToken::Id(name) => Ok(token::Ident::new(name, span).into()),
-      RawToken::Number(value) => Ok(token::Number::new(value, span).into()),
+      RawToken::Number(value) => Lexer::number(value, span),
       RawToken::ErrorNumJunkAfterDecimalPoint(s) => {
         Err(error::NumberJunkAfterDecimalPoint::new(span).into())
       }
@@ -782,16 +792,16 @@ mod tests {
     test_tokens!(src, [InvalidOperator::from_range(0..src.len())]);
   }
 
-  #[test_case("1")]
-  #[test_case("1.0")]
-  #[test_case("0.10")]
-  #[test_case("0e100")]
-  #[test_case("1e100")]
-  #[test_case("1.1e100")]
-  #[test_case("1.2e-100")]
-  #[test_case("1.3e+100")]
-  fn number(src: &str) {
-    test_tokens!(src, [Number::from_range(src, 0..src.len())]);
+  #[test_case("1", 1f64)]
+  #[test_case("1.0", 1.0f64)]
+  #[test_case("0.10", 0.10f64)]
+  #[test_case("0e100", 0e100f64)]
+  #[test_case("1e100", 1e100f64)]
+  #[test_case("1.1e100", 1.1e100f64)]
+  #[test_case("1.2e-100", 1.2e-100f64)]
+  #[test_case("1.3e+100", 1.3e+100f64)]
+  fn number(src: &str, number: f64) {
+    test_tokens!(src, [Number::from_range(number, 0..src.len())]);
   }
 
   #[test]
@@ -799,8 +809,8 @@ mod tests {
     test_tokens!(
       "0100",
       [
-        Number::from_range("0", 0..1),
-        Number::from_range("100", 1..4),
+        Number::from_range(0f64, 0..1),
+        Number::from_range(100f64, 1..4),
       ]
     );
   }
@@ -810,9 +820,9 @@ mod tests {
     test_tokens!(
       "10+10",
       [
-        Number::from_range("10", 0..2),
+        Number::from_range(10f64, 0..2),
         Plus::from_range(2..3),
-        Number::from_range("10", 3..5),
+        Number::from_range(10f64, 3..5),
       ]
     );
   }

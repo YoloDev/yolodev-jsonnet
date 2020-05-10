@@ -51,6 +51,14 @@ impl<T, P> Punctuated<T, P> {
     }
   }
 
+  /// Creates an empty punctuated sequence.
+  pub fn with_capacity(capacity: usize) -> Punctuated<T, P> {
+    Punctuated {
+      inner: SmallVec::with_capacity(capacity),
+      last: None,
+    }
+  }
+
   /// Determines whether this punctuated sequence is empty, meaning it
   /// contains no syntax tree nodes or punctuation.
   pub fn is_empty(&self) -> bool {

@@ -31,11 +31,42 @@ pub trait Tok: Debug + Display + IntoToken + Spanned + 'static {
   fn peek(cursor: Cursor) -> bool;
 }
 
+macro_rules! impl_from_strings {
+  ($ty:ident) => {
+    impl From<Rc<str>> for $ty {
+      #[inline]
+      fn from(name: Rc<str>) -> Self {
+        Self::new(name, Span::default())
+      }
+    }
+
+    impl From<alloc::string::String> for $ty {
+      #[inline]
+      fn from(name: alloc::string::String) -> Self {
+        Self::new(name.as_ref(), Span::default())
+      }
+    }
+
+    impl From<&str> for $ty {
+      #[inline]
+      fn from(name: &str) -> Self {
+        Self::new(name, Span::default())
+      }
+    }
+  };
+}
+
 /// Identifier token
 #[derive(Clone)]
 pub struct Ident {
   span: Span,
   name: Rc<str>,
+}
+
+impl AsRef<str> for Ident {
+  fn as_ref(&self) -> &str {
+    &self.name
+  }
 }
 
 impl PartialEq for Ident {
@@ -109,6 +140,8 @@ impl Parse for Ident {
   }
 }
 
+impl_from_strings!(Ident);
+
 impl Ident {
   pub fn new(name: impl Into<Rc<str>>, span: Span) -> Self {
     // TODO: Validate name isn't a keyword & is a valid identifier
@@ -124,13 +157,17 @@ impl Ident {
   pub fn from_range(value: impl Into<Rc<str>>, range: std::ops::Range<usize>) -> Self {
     Self::new(value, Span::from_range(range))
   }
+
+  pub fn ident(&self) -> &Rc<str> {
+    &self.name
+  }
 }
 
 /// Number token
 #[derive(Clone)]
 pub struct Number {
   span: Span,
-  value: Rc<str>,
+  value: f64,
 }
 
 impl PartialEq for Number {
@@ -150,7 +187,7 @@ impl Eq for Number {}
 impl Hash for Number {
   #[inline]
   fn hash<H: Hasher>(&self, state: &mut H) {
-    Hash::hash(&self.value, state)
+    Hash::hash(&self.value.to_string(), state)
   }
 }
 
@@ -162,7 +199,7 @@ impl Debug for Number {
 
 impl Display for Number {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    f.write_str(&self.value)
+    Display::fmt(&self.value, f)
   }
 }
 
@@ -205,19 +242,28 @@ impl Parse for Number {
   }
 }
 
+impl Into<f64> for Number {
+  fn into(self) -> f64 {
+    self.value
+  }
+}
+
+impl From<f64> for Number {
+  fn from(value: f64) -> Self {
+    Self::new(value, Span::default())
+  }
+}
+
 impl Number {
-  pub fn new(value: impl Into<Rc<str>>, span: Span) -> Self {
+  pub fn new(value: f64, span: Span) -> Self {
     // TODO: Validate number
-    Number {
-      value: value.into(),
-      span,
-    }
+    Number { value: value, span }
   }
 
   #[cfg(test)]
   #[inline]
   #[allow(dead_code)]
-  pub fn from_range(value: impl Into<Rc<str>>, range: std::ops::Range<usize>) -> Self {
+  pub fn from_range(value: f64, range: std::ops::Range<usize>) -> Self {
     Self::new(value, Span::from_range(range))
   }
 }
@@ -237,6 +283,12 @@ pub struct String {
   span: Span,
   value: Rc<str>,
   kind: StringKind,
+}
+
+impl AsRef<str> for String {
+  fn as_ref(&self) -> &str {
+    &self.value
+  }
 }
 
 impl PartialEq for String {

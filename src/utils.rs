@@ -1,3 +1,5 @@
+pub(crate) mod intern;
+
 pub(crate) mod printable {
   fn check(x: u16, singletonuppers: &[(u8, u8)], singletonlowers: &[u8], normal: &[u8]) -> bool {
     let xupper = (x >> 8) as u8;
