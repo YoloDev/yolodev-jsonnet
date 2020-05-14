@@ -3,6 +3,7 @@ use core::{
   mem,
   mem::MaybeUninit,
   num::NonZeroU32,
+  ops::Index,
   pin::Pin,
   ptr,
   ptr::NonNull,
@@ -81,7 +82,7 @@ impl StringInterner {
 
             unsafe {
               let buf = self.buf.as_mut().get_unchecked_mut();
-              let start = MaybeUninit::first_ptr_mut(buf).offset(pos as isize);
+              let start = MaybeUninit::first_ptr_mut(buf).add(pos);
               ptr::copy_nonoverlapping(value.as_bytes().as_ptr(), start, len);
               core::str::from_utf8_unchecked(core::slice::from_raw_parts(start, len))
             }
@@ -110,8 +111,23 @@ impl StringInterner {
     id
   }
 
+  pub fn get(&self, id: StringId) -> Option<&str> {
+    let index = (id.0.get() - 1) as usize;
+    self.vec.get(index).map(|ptr| unsafe { ptr.as_ref() })
+  }
+
   pub fn lookup(&self, id: StringId) -> &str {
     let index = (id.0.get() - 1) as usize;
+    unsafe { self.vec[index].as_ref() }
+  }
+}
+
+impl Index<StringId> for StringInterner {
+  type Output = str;
+
+  #[inline]
+  fn index(&self, index: StringId) -> &Self::Output {
+    let index = (index.0.get() - 1) as usize;
     unsafe { self.vec[index].as_ref() }
   }
 }

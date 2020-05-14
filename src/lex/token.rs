@@ -322,23 +322,9 @@ impl Debug for String {
 }
 
 impl Display for String {
+  #[inline]
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    let mut buf = alloc::string::String::with_capacity(self.value.len() + 2);
-    for c in self.value.chars() {
-      match c {
-        '\t' => buf.push_str("\\t"),
-        '\n' => buf.push_str("\\n"),
-        '\\' => buf.push_str("\\\\"),
-        '\'' => buf.push('\''),
-        '"' => buf.push_str("\\\""),
-        _ if !crate::utils::printable::is_printable(c) => {
-          write!(buf, "\\u{:x}", c as u32)?;
-        }
-        c => buf.push(c),
-      }
-    }
-
-    f.write_str(&buf)
+    crate::utils::format_code_string(&self.value, f)
   }
 }
 
@@ -620,7 +606,7 @@ macro_rules! define_token_kind {
         #[cfg(test)]
         #[inline]
         #[allow(dead_code)]
-        pub const fn from_range(range: std::ops::Range<usize>) -> Self {
+        pub fn from_range(range: std::ops::Range<usize>) -> Self {
           Self::new(Span::from_range(range))
         }
       }
@@ -908,7 +894,6 @@ define_token_kind_simple! {
   "~"               pub struct BitNeg                   /// `~`
 }
 
-//trace_macros!(true);
 define_token_kind! {
   symbol_item!(Symbol, "symbol")
 
@@ -946,7 +931,6 @@ define_token_kind! {
   /// `$`
   Dollar("$"),
 }
-trace_macros!(false);
 
 #[cfg(test)]
 mod tests {

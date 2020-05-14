@@ -1,4 +1,27 @@
+pub(crate) mod arena;
 pub(crate) mod intern;
+pub(crate) mod print;
+
+pub(crate) fn format_code_string(s: &str, f: &mut impl core::fmt::Write) -> core::fmt::Result {
+  use core::fmt::Write;
+
+  let mut buf = alloc::string::String::with_capacity(s.len() + 2);
+  for c in s.chars() {
+    match c {
+      '\t' => buf.push_str("\\t"),
+      '\n' => buf.push_str("\\n"),
+      '\\' => buf.push_str("\\\\"),
+      '\'' => buf.push('\''),
+      '"' => buf.push_str("\\\""),
+      _ if !crate::utils::printable::is_printable(c) => {
+        write!(buf, "\\u{:x}", c as u32)?;
+      }
+      c => buf.push(c),
+    }
+  }
+
+  f.write_str(&buf)
+}
 
 pub(crate) mod printable {
   fn check(x: u16, singletonuppers: &[(u8, u8)], singletonlowers: &[u8], normal: &[u8]) -> bool {

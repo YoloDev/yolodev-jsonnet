@@ -83,7 +83,7 @@ macro_rules! define_errors {
         #[cfg(test)]
         #[inline]
         #[allow(dead_code)]
-        pub const fn from_range(range: std::ops::Range<usize>) -> Self {
+        pub fn from_range(range: std::ops::Range<usize>) -> Self {
           Self::new(Span::from_range(range))
         }
       }

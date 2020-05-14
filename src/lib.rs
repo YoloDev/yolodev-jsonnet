@@ -4,6 +4,8 @@
 #![feature(ptr_offset_from)]
 #![feature(new_uninit)]
 #![feature(maybe_uninit_slice)]
+#![feature(associated_type_defaults)]
+#![feature(type_alias_impl_trait)]
 #![cfg_attr(test, feature(option_expect_none, box_patterns))]
 
 extern crate alloc;
@@ -82,6 +84,7 @@ macro_rules! define_error {
 }
 
 pub(crate) mod ast;
+pub(crate) mod core;
 pub(crate) mod lex;
 pub(crate) mod parse;
 pub(crate) mod utils;
