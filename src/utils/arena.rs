@@ -10,8 +10,6 @@ use core::{
   ptr,
   ptr::NonNull,
 };
-#[cfg(debug_assertions)]
-use hashbrown::HashSet;
 
 macro_rules! impl_id_traits {
   ($ty:ident, $dat:ty) => {
@@ -54,21 +52,11 @@ macro_rules! impl_id_traits {
   };
 }
 
-#[cfg(debug_assertions)]
-#[derive(Debug)]
-pub(crate) struct Id<T: Sized>(NonZeroU32, *const T);
-
-#[cfg(not(debug_assertions))]
 #[derive(Debug)]
 pub(crate) struct Id<T: Sized>(NonZeroU32, PhantomData<*const T>);
 
 impl_id_traits!(Id, T);
 
-#[cfg(debug_assertions)]
-#[derive(Debug)]
-pub(crate) struct SliceId<T: Sized>(NonZeroU32, *const [T]);
-
-#[cfg(not(debug_assertions))]
 #[derive(Debug)]
 pub(crate) struct SliceId<T: Sized>(NonZeroU32, PhantomData<*const [T]>);
 impl_id_traits!(SliceId, [T]);
@@ -93,8 +81,6 @@ pub(crate) struct Arena<T: Sized + 'static> {
   buf: Pin<Box<[MaybeUninit<T>]>>,
   buf_len: usize,
   full: Vec<(Pin<Box<[MaybeUninit<T>]>>, usize)>,
-  #[cfg(debug_assertions)]
-  written: HashSet<*const T>,
 }
 
 impl<T: Sized + 'static> Drop for Arena<T> {
@@ -121,8 +107,6 @@ impl<T: Sized + 'static> Arena<T> {
         buf: new_buf(0),
         buf_len: 0,
         full: Vec::new(),
-        #[cfg(debug_assertions)]
-        written: HashSet::new(),
       };
     }
 
@@ -134,8 +118,6 @@ impl<T: Sized + 'static> Arena<T> {
       buf: new_buf(cap),
       buf_len: 0,
       full: Vec::new(),
-      #[cfg(debug_assertions)]
-      written: HashSet::new(),
     }
   }
 
@@ -156,9 +138,6 @@ impl<T: Sized + 'static> Arena<T> {
     let ptr = unsafe {
       let buf = self.buf.as_mut().get_unchecked_mut();
       let start = MaybeUninit::first_ptr_mut(buf).add(pos);
-      if !self.written.insert(start) {
-        panic!("Trying to rewrite to already written pointer");
-      }
       start.write(item);
       NonNull::new_unchecked(start)
     };
@@ -167,14 +146,7 @@ impl<T: Sized + 'static> Arena<T> {
     let id = unsafe { NonZeroU32::new_unchecked((index + 1) as u32) };
     self.items.push(ptr);
 
-    #[cfg(debug_assertions)]
-    println!("id({:?}) {} => {:?}", TypeId::of::<T>(), id, ptr);
-
-    #[cfg(debug_assertions)]
-    return Id(id, ptr.as_ptr());
-
-    #[cfg(not(debug_assertions))]
-    return Id(id, PhantomData);
+    Id(id, PhantomData)
   }
 
   pub fn push_slice<I>(&mut self, items: I) -> SliceId<T>
@@ -213,9 +185,6 @@ impl<T: Sized + 'static> Arena<T> {
     while let Some((idx, item)) = items.next() {
       len = idx + 1;
       unsafe {
-        if !self.written.insert(ptr) {
-          panic!("Trying to rewrite to already written pointer");
-        }
         ptr.write(item);
         ptr = ptr.add(1);
       }
@@ -231,25 +200,14 @@ impl<T: Sized + 'static> Arena<T> {
     let id = unsafe { NonZeroU32::new_unchecked((index + 2) as u32) };
     self.slices.push(slice);
 
-    #[cfg(debug_assertions)]
-    println!("slice-id({:?}) {} => {:?}", TypeId::of::<T>(), id, slice);
-
-    #[cfg(debug_assertions)]
-    return SliceId(id, slice.as_ptr());
-
-    #[cfg(not(debug_assertions))]
-    return SliceId(id, PhantomData);
+    SliceId(id, PhantomData)
   }
 
   pub fn empty_slice(&self) -> SliceId<T> {
     //SliceId(unsafe { NonZeroU32::new_unchecked(1) }, PhantomData)
     let id = unsafe { NonZeroU32::new_unchecked(1) };
 
-    #[cfg(debug_assertions)]
-    return SliceId(id, ptr::slice_from_raw_parts(ptr::null(), 0));
-
-    #[cfg(not(debug_assertions))]
-    return SliceId(id, PhantomData);
+    SliceId(id, PhantomData)
   }
 }
 
@@ -259,12 +217,6 @@ impl<T: Sized> Index<Id<T>> for Arena<T> {
   #[inline]
   fn index(&self, id: Id<T>) -> &Self::Output {
     let index = (id.0.get() - 1) as usize;
-
-    #[cfg(debug_assertions)]
-    println!("read-id({:?}) {} <- {:?}", TypeId::of::<T>(), id.0, id.1);
-
-    #[cfg(debug_assertions)]
-    debug_assert_eq!(self.items[index].as_ptr() as *const T, id.1);
 
     unsafe { self.items[index].as_ref() }
   }
@@ -278,18 +230,9 @@ impl<T: Sized> Index<SliceId<T>> for Arena<T> {
     let index = id.0.get();
 
     if index == 1 {
-      #[cfg(debug_assertions)]
-      debug_assert_eq!(ptr::slice_from_raw_parts(ptr::null(), 0), id.1);
-
       &[]
     } else {
       let index = (index - 2) as usize;
-
-      #[cfg(debug_assertions)]
-      println!("read-slice({:?}) {} <- {:?}", TypeId::of::<T>(), id.0, id.1);
-
-      #[cfg(debug_assertions)]
-      debug_assert_eq!(self.slices[index].as_ptr() as *const [T], id.1);
 
       unsafe { self.slices[index].as_ref() }
     }
