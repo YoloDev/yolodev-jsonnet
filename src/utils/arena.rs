@@ -1,5 +1,4 @@
 use core::{
-  any::TypeId,
   hash::{Hash, Hasher},
   marker::PhantomData,
   mem,

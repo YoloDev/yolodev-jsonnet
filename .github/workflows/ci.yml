@@ -14,6 +14,8 @@ jobs:
         os: [macos-latest, windows-latest, ubuntu-latest]
 
     steps:
+      - run: git config --global core.autocrlf false
+        name: Disable autocrlf
       - uses: actions/checkout@v2
       - name: Install latest nightly
         uses: actions-rs/toolchain@v1
