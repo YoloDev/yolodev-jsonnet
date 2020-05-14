@@ -1829,8 +1829,6 @@ mod tests {
     }
   }
 
-  const IS_CI: bool = core::option_env!("CI").is_some();
-
   // TODO: CFG std or get file content embedded
   #[test_resources("test-cases/core/*.jsonnet")]
   fn verify_desugar(path: &str) {
@@ -1847,7 +1845,7 @@ mod tests {
     let output = format!("{}\n", core.display(&allocator));
 
     if !golden.is_file() {
-      if IS_CI {
+      if core::option_env!("CI").is_some() {
         panic!("missing golden file for {} on CI", path.display());
       }
 
