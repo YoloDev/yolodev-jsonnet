@@ -1530,7 +1530,7 @@ impl DisplayCore for CoreExpr {
         f.indented(|f| {
           for item in e.get(&a.cores) {
             DisplayCore::fmt(item, a, f)?;
-            write!(f, ",\n");
+            write!(f, ",\n")?;
           }
 
           Ok(())
@@ -1574,12 +1574,12 @@ impl DisplayCore for CoreObject {
           DisplayCore::fmt(field.key.get(&a.cores), a, f)?;
           write!(f, "]")?;
           DisplayCore::fmt(&field.kind, a, f)?;
-          write!(f, " ");
+          write!(f, " ")?;
           DisplayCore::fmt(field.value.get(&a.cores), a, f)?;
 
           Ok(())
         })?;
-        write!(f, ",\n");
+        write!(f, ",\n")?;
       }
 
       Ok(())
@@ -1801,7 +1801,8 @@ impl DisplayCore for CoreApply {
 mod tests {
   use super::*;
   use crate::lex::span::FileId;
-  use test_generator::test_resources;
+  //use test_generator::test_resources;
+  use test_gen::test_golden;
 
   #[derive(PartialEq, Eq, Clone, Copy)]
   struct PrettyString<'a>(&'a str);
@@ -1829,31 +1830,40 @@ mod tests {
     }
   }
 
-  // TODO: CFG std or get file content embedded
-  #[test_resources("test-cases/core/*.jsonnet")]
-  fn verify_desugar(path: &str) {
-    use std::path::Path;
-    let path: &Path = path.as_ref();
-    let golden = path.with_extension("golden");
-
-    let content = std::fs::read(path).expect("read input");
-    let content = core::str::from_utf8(&content).expect("valid utf8");
+  #[test_golden("test-cases/core/*.jsonnet")]
+  fn verify_desugar(content: &str, _: &str) -> String {
     let expr: Expr = crate::parse::parse(content, FileId::UNKNOWN).expect("parse");
 
     let mut allocator = Allocator::new();
     let core = expr.desugar_expr(&mut allocator, NotInObject);
-    let output = format!("{}\n", core.display(&allocator));
-
-    if !golden.is_file() {
-      if core::option_env!("CI").is_some() {
-        panic!("missing golden file for {} on CI", path.display());
-      }
-
-      std::fs::write(golden, output).expect("write golden");
-    } else {
-      let golden_content = std::fs::read(golden).expect("read golden");
-      let golden_content = core::str::from_utf8(&golden_content).expect("golden valid utf8");
-      assert_eq!(golden_content, output.as_str());
-    }
+    format!("{}", core.display(&allocator))
   }
+
+  // // TODO: CFG std or get file content embedded
+  // #[test_resources("test-cases/core/*.jsonnet")]
+  // fn verify_desugar(path: &str) {
+  //   use std::path::Path;
+  //   let path: &Path = path.as_ref();
+  //   let golden = path.with_extension("golden");
+
+  //   let content = std::fs::read(path).expect("read input");
+  //   let content = core::str::from_utf8(&content).expect("valid utf8");
+  //   let expr: Expr = crate::parse::parse(content, FileId::UNKNOWN).expect("parse");
+
+  //   let mut allocator = Allocator::new();
+  //   let core = expr.desugar_expr(&mut allocator, NotInObject);
+  //   let output = format!("{}\n", core.display(&allocator));
+
+  //   if !golden.is_file() {
+  //     if core::option_env!("CI").is_some() {
+  //       panic!("missing golden file for {} on CI", path.display());
+  //     }
+
+  //     std::fs::write(golden, output).expect("write golden");
+  //   } else {
+  //     let golden_content = std::fs::read(golden).expect("read golden");
+  //     let golden_content = core::str::from_utf8(&golden_content).expect("golden valid utf8");
+  //     assert_eq!(golden_content, output.as_str());
+  //   }
+  // }
 }

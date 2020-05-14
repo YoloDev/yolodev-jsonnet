@@ -1,0 +1,10 @@
+{
+    ["a"]: local
+        $ = self;
+    true,
+}
+  + {
+      ["b"]: local
+          $ = self;
+      false,
+  }

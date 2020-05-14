@@ -1,0 +1,5 @@
+{
+    ["a"]: local
+        $ = self;
+    true,
+}
