@@ -1,0 +1,44 @@
+local
+    $arr = [
+      1,
+      2,
+      3,
+    ];
+std["join"](
+  [
+  ],
+  std["makeArray"](
+    std["length"](
+      $arr,
+    ),
+      function (
+      $i = error "Parameter not bound"
+    )
+        local
+          x = $arr[$i];
+        local
+          $arr = [
+            10,
+            20,
+            30,
+          ];
+      std["join"](
+        [
+        ],
+        std["makeArray"](
+          std["length"](
+            $arr,
+          ),
+            function (
+            $i = error "Parameter not bound"
+          )
+              local
+                y = $arr[$i];
+            [
+              x
+                * y,
+            ],
+        ),
+      ),
+  ),
+)

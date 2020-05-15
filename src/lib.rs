@@ -30,8 +30,8 @@ macro_rules! define_error {
       )*
     }
 
-    impl private::Sealed for $name {}
-    impl Spanned for $name {
+    impl crate::lex::token::private::Sealed for $name {}
+    impl crate::lex::token::Spanned for $name {
       #[inline]
       fn span(&self) -> Span {
         self.span
@@ -39,8 +39,8 @@ macro_rules! define_error {
     }
 
     impl crate::parse::error::Diagnostic for $name {
-      fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Display::fmt(self, f)
+      fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        ::core::fmt::Display::fmt(self, f)
       }
     }
   };

@@ -74,14 +74,14 @@ impl<T> Alloc<T> for Arena<T> {
   }
 }
 
-struct Allocator {
-  cores: Arena<Core>,
-  exprs: Arena<CoreExpr>,
-  named_args: Arena<CoreApplyNamedArg>,
-  binds: Arena<CoreLocalBind>,
-  params: Arena<CoreFunctionParam>,
-  fields: Arena<CoreObjectField>,
-  strings: StringInterner,
+pub(crate) struct Allocator {
+  pub(crate) cores: Arena<Core>,
+  pub(crate) exprs: Arena<CoreExpr>,
+  pub(crate) named_args: Arena<CoreApplyNamedArg>,
+  pub(crate) binds: Arena<CoreLocalBind>,
+  pub(crate) params: Arena<CoreFunctionParam>,
+  pub(crate) fields: Arena<CoreObjectField>,
+  pub(crate) strings: StringInterner,
   null_ref: Id<CoreExpr>,
   true_ref: Id<CoreExpr>,
   false_ref: Id<CoreExpr>,
@@ -96,7 +96,7 @@ struct Allocator {
 }
 
 impl Allocator {
-  fn new() -> Allocator {
+  pub(crate) fn new() -> Allocator {
     let mut strings = StringInterner::with_capacity(1024);
     let mut exprs = Arena::new();
     let mut cores = Arena::new();
@@ -146,6 +146,10 @@ impl Allocator {
       std_refs: HashMap::new(),
     }
   }
+}
+
+pub(crate) fn from_ast(a: &mut Allocator, ast: Expr) -> Core {
+  ast.desugar_expr(a, NotInObject)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -198,8 +202,8 @@ pub enum BinaryOperatorKind {
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Core {
-  expr: Id<CoreExpr>,
-  span: Span,
+  pub(crate) expr: Id<CoreExpr>,
+  pub(crate) span: Span,
 }
 
 impl Core {
@@ -323,6 +327,7 @@ pub(crate) struct CoreApply {
 
 #[derive(Debug, Clone)]
 pub(crate) struct CoreApplyNamedArg {
+  pub span: Span,
   pub name: StringId,
   pub value: Id<Core>,
 }
@@ -455,8 +460,8 @@ fn desugar_arrcomp<T: ObjectState>(
     }
 
     (CompSpec::For(f), Some(specs)) => {
-      let arr_id = a.strings.intern("arr");
-      let i_id = a.strings.intern("i");
+      let arr_id = a.strings.intern("$arr");
+      let i_id = a.strings.intern("$i");
 
       let arr = a
         .exprs
@@ -474,10 +479,6 @@ fn desugar_arrcomp<T: ObjectState>(
       };
 
       let inner = desugar_arrcomp(a, expr, specs, state);
-      let inner = a
-        .exprs
-        .alloc(CoreExpr::Array(a.cores.alloc_slice(Some(inner))))
-        .into_core_empty_span();
       let arr_i = a
         .exprs
         .alloc(CoreMemberAccess {
@@ -526,8 +527,8 @@ fn desugar_arrcomp<T: ObjectState>(
     }
 
     (CompSpec::For(f), None) => {
-      let arr_id = a.strings.intern("arr");
-      let i_id = a.strings.intern("i");
+      let arr_id = a.strings.intern("$arr");
+      let i_id = a.strings.intern("$i");
 
       let arr = a
         .exprs
@@ -690,8 +691,8 @@ impl DesugarExpr for ExprObject {
 impl DesugarExpr for ExprObjectComp {
   fn desugar_expr<T: ObjectState>(self, a: &mut Allocator, state: T) -> Core {
     let span = self.span();
-    let arr_id = a.strings.intern("arr");
-    let arr = Ident::from(Rc::from("arr")); // TODO: Really want to get rid of this...
+    let arr_id = a.strings.intern("$arr");
+    let arr = Ident::from(Rc::from("$arr")); // TODO: Really want to get rid of this...
     let mut xs = Vec::with_capacity(self.tail_spec.len() + 1);
 
     xs.push(self.for_spec.id.clone());
@@ -1104,6 +1105,7 @@ impl DesugarExpr for ExprApply {
         Argument::Named(arg) => {
           found_named = true;
           named.push(CoreApplyNamedArg {
+            span: arg.span(),
             name: a.strings.intern(arg.name.as_ref()),
             value: {
               let value = arg.value.desugar_expr(a, state);
@@ -1312,13 +1314,16 @@ impl DesugarField for ObjectFieldValue {
     let kind = self.op.kind();
 
     let rest = self.value.desugar_expr(a, state);
-    let value = a
-      .exprs
-      .alloc(CoreLocal {
-        binds,
-        rest: a.cores.alloc(rest),
-      })
-      .into_core_empty_span();
+    let value = if binds.get(&a.binds).is_empty() {
+      rest
+    } else {
+      a.exprs
+        .alloc(CoreLocal {
+          binds,
+          rest: a.cores.alloc(rest),
+        })
+        .into_core_empty_span()
+    };
 
     CoreObjectField {
       key: a.cores.alloc(name),
@@ -1378,12 +1383,16 @@ impl DesugarAssert for ObjectFieldAssert {
       })
       .into_core_empty_span();
 
-    a.exprs
-      .alloc(CoreLocal {
-        binds,
-        rest: a.cores.alloc(if_expr),
-      })
-      .into_core(span)
+    if binds.get(&a.binds).is_empty() {
+      if_expr
+    } else {
+      a.exprs
+        .alloc(CoreLocal {
+          binds,
+          rest: a.cores.alloc(if_expr),
+        })
+        .into_core(span)
+    }
   }
 }
 
@@ -1838,32 +1847,4 @@ mod tests {
     let core = expr.desugar_expr(&mut allocator, NotInObject);
     format!("{}", core.display(&allocator))
   }
-
-  // // TODO: CFG std or get file content embedded
-  // #[test_resources("test-cases/core/*.jsonnet")]
-  // fn verify_desugar(path: &str) {
-  //   use std::path::Path;
-  //   let path: &Path = path.as_ref();
-  //   let golden = path.with_extension("golden");
-
-  //   let content = std::fs::read(path).expect("read input");
-  //   let content = core::str::from_utf8(&content).expect("valid utf8");
-  //   let expr: Expr = crate::parse::parse(content, FileId::UNKNOWN).expect("parse");
-
-  //   let mut allocator = Allocator::new();
-  //   let core = expr.desugar_expr(&mut allocator, NotInObject);
-  //   let output = format!("{}\n", core.display(&allocator));
-
-  //   if !golden.is_file() {
-  //     if core::option_env!("CI").is_some() {
-  //       panic!("missing golden file for {} on CI", path.display());
-  //     }
-
-  //     std::fs::write(golden, output).expect("write golden");
-  //   } else {
-  //     let golden_content = std::fs::read(golden).expect("read golden");
-  //     let golden_content = core::str::from_utf8(&golden_content).expect("golden valid utf8");
-  //     assert_eq!(golden_content, output.as_str());
-  //   }
-  // }
 }

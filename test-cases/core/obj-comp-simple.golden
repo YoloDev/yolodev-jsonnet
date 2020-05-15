@@ -1,0 +1,38 @@
+{
+    [local
+        x = $arr[0];
+    x["name"]]: local
+        x = $arr[0];
+      local
+      ;
+    x["value"]
+  for $arr in local
+      $arr = [
+        {
+            ["name"]: local
+                $ = self;
+            "test",
+            ["value"]: local
+                $ = self;
+            5,
+        },
+      ];
+  std["join"](
+    [
+    ],
+    std["makeArray"](
+      std["length"](
+        $arr,
+      ),
+        function (
+        $i = error "Parameter not bound"
+      )
+          local
+            x = $arr[$i];
+        [
+          [
+            x,
+          ],
+        ],
+    ),
+  )}

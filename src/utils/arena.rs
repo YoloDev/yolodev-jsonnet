@@ -53,7 +53,6 @@ macro_rules! impl_id_traits {
 
 #[derive(Debug)]
 pub(crate) struct Id<T: Sized>(NonZeroU32, PhantomData<*const T>);
-
 impl_id_traits!(Id, T);
 
 #[derive(Debug)]
@@ -207,6 +206,11 @@ impl<T: Sized + 'static> Arena<T> {
     let id = unsafe { NonZeroU32::new_unchecked(1) };
 
     SliceId(id, PhantomData)
+  }
+
+  pub fn len(&self) -> usize {
+    let lengths: usize = self.full.iter().map(|(_, l)| *l).sum();
+    lengths + self.buf_len
   }
 }
 
