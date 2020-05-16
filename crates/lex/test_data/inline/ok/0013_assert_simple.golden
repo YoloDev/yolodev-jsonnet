@@ -1,0 +1,8 @@
+KeywordAssert("assert")
+Whitespace(" ")
+KeywordTrue("true")
+Whitespace(" ")
+SymbolSemi(";")
+Whitespace(" ")
+KeywordNull("null")
+Whitespace("\n")

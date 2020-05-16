@@ -6,7 +6,7 @@ use alloc::rc::Rc;
 use core::{
   convert::TryFrom,
   fmt,
-  fmt::{Debug, Display, Write},
+  fmt::{Debug, Display},
   hash::{Hash, Hasher},
 };
 use derive_more::From;
@@ -995,46 +995,6 @@ mod tests {
     let parsed: Token = parsed.into();
     assert_eq!(parsed, expected);
   }
-
-  // macro_rules! crate_parse_group_test {
-  //   ($name:ident, $content:expr, $kind:ident, $open:expr) => {
-  //     #[test]
-  //     fn $name() {
-  //       #[derive(Debug, PartialEq)]
-  //       struct Group {
-  //         open: <$kind as Delimiter>::Open,
-  //       }
-
-  //       impl Parse for Group {
-  //         fn parse(input: ParseStream) -> crate::parse::error::Result<Self> {
-  //           //assert!(input.peek::<$kind>());
-
-  //           input.step(|cursor| {
-  //             let cursor = *cursor;
-  //             cursor
-  //               .group($kind)
-  //               .map(|(cursor, open, _)| (Group { open }, cursor))
-  //               .ok_or_else(|| ParseError::expected_token(cursor.span(), stringify!($kind)))
-  //           })
-  //         }
-  //       }
-
-  //       let file = FileId::UNKNOWN;
-  //       let expected = Group { open: $open };
-  //       let parsed: Group = crate::parse::parse($content, file).expect("parse");
-  //       assert_eq!(parsed, expected);
-  //     }
-  //   };
-  // }
-
-  // // NOTE: range is ignored here
-  // crate_parse_group_test!(brace_group, "{}", Braces, BraceL::from_range(0..1));
-
-  // // NOTE: range is ignored here
-  // crate_parse_group_test!(bracket_group, "[]", Brackets, BracketL::from_range(0..1));
-
-  // // NOTE: range is ignored here
-  // crate_parse_group_test!(paren_group, "()", Parentheses, ParenL::from_range(0..1));
 
   #[derive(Debug, PartialEq)]
   struct Group<D: Delimiter> {

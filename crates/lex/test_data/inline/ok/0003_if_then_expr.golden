@@ -1,0 +1,8 @@
+KeywordIf("if")
+Whitespace(" ")
+KeywordTrue("true")
+Whitespace(" ")
+KeywordThen("then")
+Whitespace(" ")
+KeywordNull("null")
+Whitespace("\n")

@@ -1,0 +1,5 @@
+Ident("foo")
+SymbolLeftParen("(")
+Number("0")
+SymbolRightParen(")")
+Whitespace("\n")

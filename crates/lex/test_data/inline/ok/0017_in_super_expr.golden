@@ -1,0 +1,6 @@
+StringSingleQuoted("\'foo\'")
+Whitespace(" ")
+KeywordIn("in")
+Whitespace(" ")
+KeywordSuper("super")
+Whitespace("\n")

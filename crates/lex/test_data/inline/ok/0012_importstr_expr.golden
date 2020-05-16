@@ -1,0 +1,4 @@
+KeywordImportStr("importstr")
+Whitespace(" ")
+StringDoubleQuoted("\"test\"")
+Whitespace("\n")

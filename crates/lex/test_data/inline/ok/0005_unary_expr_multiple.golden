@@ -1,0 +1,6 @@
+OpNot("!")
+Whitespace(" ")
+OpMinus("-")
+Whitespace(" ")
+Number("10")
+Whitespace("\n")

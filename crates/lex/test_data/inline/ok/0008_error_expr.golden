@@ -1,0 +1,4 @@
+KeywordError("error")
+Whitespace(" ")
+StringDoubleQuoted("\"test\"")
+Whitespace("\n")

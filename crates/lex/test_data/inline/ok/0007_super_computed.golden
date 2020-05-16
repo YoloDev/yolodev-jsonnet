@@ -1,0 +1,5 @@
+KeywordSuper("super")
+SymbolLeftBracket("[")
+StringSingleQuoted("\'foo\'")
+SymbolRightBracket("]")
+Whitespace("\n")

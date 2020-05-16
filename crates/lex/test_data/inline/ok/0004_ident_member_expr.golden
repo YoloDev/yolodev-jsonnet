@@ -1,0 +1,4 @@
+Ident("foo")
+SymbolDot(".")
+Ident("bar")
+Whitespace("\n")

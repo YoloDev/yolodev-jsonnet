@@ -18,8 +18,10 @@ fn canonical_fn_name(s: &str) -> String {
   .replace('\u{FFFD}', "")
 }
 
-fn gen_test_name(ident: &Ident, path: &Path) -> Ident {
-  let name_part_from_path = canonical_fn_name(&path.to_string_lossy());
+fn gen_test_name(ident: &Ident, path: &Path, base: &Path) -> Ident {
+  let diff = pathdiff::diff_paths(path, base);
+  let diff = diff.as_ref().map(|p| p.as_ref()).unwrap_or(path);
+  let name_part_from_path = canonical_fn_name(&diff.to_string_lossy());
   let mut name = ident.to_string();
   name.reserve(name_part_from_path.len() + 1);
   name.push('_');
@@ -80,7 +82,9 @@ fn generate_test_case(
       let expected = ::core::include_str!(#output);
 
       let mut output: String = #fn_name(input, #input).into();
-      output.push('\n');
+      if !output.ends_with("\n") {
+        output.push('\n');
+      }
       let output: &str = output.as_ref();
       assert_eq!(output, expected, "file: {}", #input);
     }
@@ -124,7 +128,9 @@ fn generate_missing_golden(
 
       let input = ::core::include_str!(#input);
       let mut output: String = #fn_name(input, #input).into();
-      output.push('\n');
+      if (!output.ends_with("\n")) {
+        output.push('\n');
+      }
       let output: &str = output.as_ref();
       ::std::fs::write(#output, &output).expect("write golden");
     }
@@ -134,7 +140,20 @@ fn generate_missing_golden(
 fn generate_tests(glob_pattern: LitStr, fun: ItemFn) -> TokenStream2 {
   let ident = fun.sig.ident;
 
-  let paths = match glob(&glob_pattern.value()) {
+  let dir = match std::env::var("CARGO_MANIFEST_DIR") {
+    Ok(v) => v,
+    Err(e) => {
+      return syn::Error::new_spanned(&glob_pattern, format!("failed to fetch files: {}", e))
+        .to_compile_error()
+    }
+  };
+
+  let dir: &Path = dir.as_ref();
+  let glob_pattern_str = glob_pattern.value();
+  let glob_pattern_str = dir.join(&glob_pattern_str);
+  let glob_pattern_str = glob_pattern_str.to_string_lossy();
+
+  let paths = match glob(&glob_pattern_str) {
     Err(e) => {
       return syn::Error::new_spanned(&glob_pattern, format!("failed to fetch files: {}", e))
         .to_compile_error()
@@ -142,31 +161,45 @@ fn generate_tests(glob_pattern: LitStr, fun: ItemFn) -> TokenStream2 {
     Ok(p) => p,
   };
 
-  let tests = paths.map(|p| {
-    let (input, test_name) = match p {
-      Err(e) => {
-        return syn::Error::new_spanned(&glob_pattern, format!("failed to fetch files: {}", e))
-          .to_compile_error()
-      }
-      Ok(p) => match p.canonicalize() {
+  let tests = paths
+    .map(|p| {
+      let (input, test_name) = match p {
         Err(e) => {
-          return syn::Error::new_spanned(
-            &glob_pattern,
-            format!("failed to canonicalize path '{:?}': {}", p.display(), e),
-          )
-          .to_compile_error()
+          return syn::Error::new_spanned(&glob_pattern, format!("failed to fetch files: {}", e))
+            .to_compile_error()
         }
-        Ok(input) => (input, gen_test_name(&ident, &p)),
-      },
-    };
+        Ok(p) => match p.canonicalize() {
+          Err(e) => {
+            return syn::Error::new_spanned(
+              &glob_pattern,
+              format!("failed to canonicalize path '{:?}': {}", p.display(), e),
+            )
+            .to_compile_error()
+          }
+          Ok(input) => (input, gen_test_name(&ident, &p, dir)),
+        },
+      };
 
-    let golden = input.with_extension("golden");
-    if golden.is_file() {
-      generate_test_case(&input, &golden, &ident, test_name)
-    } else {
-      generate_missing_golden(&input, &golden, &ident, test_name)
-    }
-  });
+      let golden = input.with_extension("golden");
+      if golden.is_file() {
+        generate_test_case(&input, &golden, &ident, test_name)
+      } else {
+        generate_missing_golden(&input, &golden, &ident, test_name)
+      }
+    })
+    .collect::<Vec<_>>();
+
+  if tests.is_empty() {
+    return syn::Error::new_spanned(
+      &glob_pattern,
+      format!(
+        "no files matched pattern: {}, cwd: {}",
+        glob_pattern_str,
+        std::env::current_dir().unwrap().display()
+      ),
+    )
+    .to_compile_error();
+  }
 
   quote! {
     #(#tests)*

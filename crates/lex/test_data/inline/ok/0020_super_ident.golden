@@ -1,0 +1,4 @@
+KeywordSuper("super")
+SymbolDot(".")
+Ident("foo")
+Whitespace("\n")

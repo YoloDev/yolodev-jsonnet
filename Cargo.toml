@@ -29,5 +29,7 @@ walkdir = "2"
 
 [workspace]
 members = [
+  "xtask",
   "build/test-gen",
+  "crates/*",
 ]

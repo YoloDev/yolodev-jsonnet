@@ -1,0 +1,27 @@
+[package]
+name = "jsonnet-lex"
+version = "0.1.0"
+authors = ["Aleksander Heintz <alxandr@alxandr.me>"]
+edition = "2018"
+build = "build.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+logos = { version = "0.11", default-features = false, features = ["export_derive"] }
+
+[dev-dependencies]
+test-case = "1"
+pretty_assertions = "0.6"
+test-gen = { version = "0.1", path = "../../build/test-gen" }
+
+[features]
+default = ["std"]
+
+# Should the crate use the standard library?
+std = [
+  "logos/std"
+]
+
+[build-dependencies]
+walkdir = "2"

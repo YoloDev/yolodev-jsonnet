@@ -1,0 +1,4 @@
+SymbolLeftParen("(")
+Number("5")
+SymbolRightParen(")")
+Whitespace("\n")
