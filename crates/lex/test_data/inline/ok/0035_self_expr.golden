@@ -1,2 +1,2 @@
-KeywordSelf("self")
-Whitespace("\n")
+KeywordSelf@0:4 "self"
+Whitespace@4:5 "\n"

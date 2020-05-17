@@ -1,8 +1,8 @@
-KeywordIf("if")
-Whitespace(" ")
-KeywordTrue("true")
-Whitespace(" ")
-KeywordThen("then")
-Whitespace(" ")
-KeywordNull("null")
-Whitespace("\n")
+KeywordIf@0:2 "if"
+Whitespace@2:3 " "
+KeywordTrue@3:7 "true"
+Whitespace@7:8 " "
+KeywordThen@8:12 "then"
+Whitespace@12:13 " "
+KeywordNull@13:17 "null"
+Whitespace@17:18 "\n"

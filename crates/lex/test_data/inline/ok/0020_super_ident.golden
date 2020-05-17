@@ -1,4 +1,4 @@
-KeywordSuper("super")
-SymbolDot(".")
-Ident("foo")
-Whitespace("\n")
+KeywordSuper@0:5 "super"
+SymbolDot@5:6 "."
+Ident@6:9 "foo"
+Whitespace@9:10 "\n"

@@ -1,2 +1,2 @@
-Number("42")
-Whitespace("\n")
+Number@0:2 "42"
+Whitespace@2:3 "\n"

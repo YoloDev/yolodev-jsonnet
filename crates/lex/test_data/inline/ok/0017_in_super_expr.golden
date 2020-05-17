@@ -1,6 +1,6 @@
-StringSingleQuoted("\'foo\'")
-Whitespace(" ")
-KeywordIn("in")
-Whitespace(" ")
-KeywordSuper("super")
-Whitespace("\n")
+StringSingleQuoted@0:5 "\'foo\'"
+Whitespace@5:6 " "
+KeywordIn@6:8 "in"
+Whitespace@8:9 " "
+KeywordSuper@9:14 "super"
+Whitespace@14:15 "\n"

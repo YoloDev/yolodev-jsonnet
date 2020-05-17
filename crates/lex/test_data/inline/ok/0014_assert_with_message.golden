@@ -1,12 +1,12 @@
-KeywordAssert("assert")
-Whitespace(" ")
-KeywordTrue("true")
-Whitespace(" ")
-OpColon(":")
-Whitespace(" ")
-StringDoubleQuoted("\"message\"")
-Whitespace(" ")
-SymbolSemi(";")
-Whitespace(" ")
-KeywordNull("null")
-Whitespace("\n")
+KeywordAssert@0:6 "assert"
+Whitespace@6:7 " "
+KeywordTrue@7:11 "true"
+Whitespace@11:12 " "
+OpColon@12:13 ":"
+Whitespace@13:14 " "
+StringDoubleQuoted@14:23 "\"message\""
+Whitespace@23:24 " "
+SymbolSemi@24:25 ";"
+Whitespace@25:26 " "
+KeywordNull@26:30 "null"
+Whitespace@30:31 "\n"

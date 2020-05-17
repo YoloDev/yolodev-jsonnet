@@ -1,4 +1,4 @@
-Ident("foo")
-SymbolDot(".")
-Ident("bar")
-Whitespace("\n")
+Ident@0:3 "foo"
+SymbolDot@3:4 "."
+Ident@4:7 "bar"
+Whitespace@7:8 "\n"

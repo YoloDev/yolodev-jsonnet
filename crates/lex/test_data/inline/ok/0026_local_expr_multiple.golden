@@ -1,19 +1,19 @@
-KeywordLocal("local")
-Whitespace(" ")
-Ident("foo")
-Whitespace(" ")
-OpAssign("=")
-Whitespace(" ")
-KeywordTrue("true")
-SymbolComma(",")
-Whitespace(" ")
-Ident("bar")
-Whitespace(" ")
-OpAssign("=")
-Whitespace(" ")
-Ident("foo")
-Whitespace(" ")
-SymbolSemi(";")
-Whitespace(" ")
-Ident("bar")
-Whitespace("\n")
+KeywordLocal@0:5 "local"
+Whitespace@5:6 " "
+Ident@6:9 "foo"
+Whitespace@9:10 " "
+OpAssign@10:11 "="
+Whitespace@11:12 " "
+KeywordTrue@12:16 "true"
+SymbolComma@16:17 ","
+Whitespace@17:18 " "
+Ident@18:21 "bar"
+Whitespace@21:22 " "
+OpAssign@22:23 "="
+Whitespace@23:24 " "
+Ident@24:27 "foo"
+Whitespace@27:28 " "
+SymbolSemi@28:29 ";"
+Whitespace@29:30 " "
+Ident@30:33 "bar"
+Whitespace@33:34 "\n"

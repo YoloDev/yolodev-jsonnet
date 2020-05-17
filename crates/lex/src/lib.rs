@@ -319,20 +319,21 @@ impl TokenKind {
 
 /// A token of jsonnet source.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Token<'a> {
+pub struct Token {
   /// The kind of token.
   pub kind: TokenKind,
+
   /// The token value.
-  pub val: &'a str,
+  pub len: u32,
 }
 
 /// A lexer of jsonnet source.
 pub struct Lexer<'a> {
   inner: logos::Lexer<'a, RawToken>,
   done: bool,
-  peeked: VecDeque<Token<'a>>,
+  peeked: VecDeque<Token>,
   #[cfg(debug_assertions)]
-  len: usize,
+  len: u32,
 }
 
 impl<'a> Lexer<'a> {
@@ -346,7 +347,7 @@ impl<'a> Lexer<'a> {
     }
   }
 
-  fn read_token(&mut self) -> Option<Token<'a>> {
+  fn read_token(&mut self) -> Option<Token> {
     if self.done {
       return None;
     }
@@ -358,20 +359,20 @@ impl<'a> Lexer<'a> {
       }
 
       Some(raw) => {
-        let val = self.inner.slice();
+        let len = self.inner.slice().len() as u32;
 
         #[cfg(debug_assertions)]
         {
-          self.len += val.len();
-          assert_eq!(self.len, self.inner.span().end);
+          self.len += len;
+          assert_eq!(self.len, self.inner.span().end as u32);
         }
 
-        Some(self.to_token(raw, val))
+        Some(self.to_token(raw, len))
       }
     }
   }
 
-  fn to_token(&self, raw: RawToken, val: &'a str) -> Token<'a> {
+  fn to_token(&self, raw: RawToken, len: u32) -> Token {
     let kind = match raw {
       RawToken::KeywordAssert => TokenKind::KeywordAssert,
       RawToken::KeywordElse => TokenKind::KeywordElse,
@@ -472,7 +473,7 @@ impl<'a> Lexer<'a> {
       RawToken::Error => TokenKind::ErrorInvalidToken,
     };
 
-    Token { kind, val }
+    Token { kind, len }
   }
 
   #[inline]
@@ -492,7 +493,7 @@ impl<'a> Lexer<'a> {
 }
 
 impl<'a> Iterator for Lexer<'a> {
-  type Item = Token<'a>;
+  type Item = Token;
 
   #[inline]
   fn next(&mut self) -> Option<Self::Item> {
@@ -501,6 +502,11 @@ impl<'a> Iterator for Lexer<'a> {
       None => self.read_token(),
     }
   }
+}
+
+/// Tokenize a string of jsonnet into a list of tokens.
+pub fn tokenize<'a>(content: &'a str) -> impl Iterator<Item = Token> + 'a {
+  Lexer::new(content)
 }
 
 #[cfg(test)]
@@ -513,18 +519,23 @@ mod tests {
       $tok:expr
       $(=> $val:expr)?
     ),*$(,)?]) => {{
-      let mut lex = Lexer::new($src);
+      let src: &str = $src;
+      let mut lex = Lexer::new(src);
       #[allow(unused_mut)]
       let mut index = 0;
+      #[allow(unused_mut)]
+      let mut offset = 0;
       $({
         let actual = lex.next().expect(&format!("Expected token {}", index + 1));
         let expected = $tok;
         assert_eq!(actual.kind, expected, "index: {}", index);
         $(
-          assert_eq!(actual.val, $val, "index: {}", index);
+          let val = &src[offset as usize..(offset + actual.len) as usize];
+          assert_eq!(val, $val, "index: {}", index);
         )?
 
         index += 1;
+        offset += actual.len;
       })*
 
       match lex.next() {
@@ -815,9 +826,21 @@ mod tests {
       let lex = Lexer::new(content);
       let mut result = String::new();
 
+      let mut offset = 0;
       for token in lex {
+        let val = &content[offset as usize..(offset + token.len) as usize];
         assert!(!token.kind.is_error());
-        writeln!(result, "{:?}({:?})", token.kind, token.val).unwrap();
+        writeln!(
+          result,
+          "{:?}@{}:{} {:?}",
+          token.kind,
+          offset,
+          offset + token.len,
+          val
+        )
+        .unwrap();
+
+        offset += token.len;
       }
 
       result

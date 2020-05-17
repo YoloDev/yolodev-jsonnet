@@ -1,8 +1,8 @@
-KeywordAssert("assert")
-Whitespace(" ")
-KeywordTrue("true")
-Whitespace(" ")
-SymbolSemi(";")
-Whitespace(" ")
-KeywordNull("null")
-Whitespace("\n")
+KeywordAssert@0:6 "assert"
+Whitespace@6:7 " "
+KeywordTrue@7:11 "true"
+Whitespace@11:12 " "
+SymbolSemi@12:13 ";"
+Whitespace@13:14 " "
+KeywordNull@14:18 "null"
+Whitespace@18:19 "\n"

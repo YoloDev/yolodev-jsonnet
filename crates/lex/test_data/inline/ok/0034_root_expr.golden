@@ -1,2 +1,2 @@
-SymbolDollar("$")
-Whitespace("\n")
+SymbolDollar@0:1 "$"
+Whitespace@1:2 "\n"

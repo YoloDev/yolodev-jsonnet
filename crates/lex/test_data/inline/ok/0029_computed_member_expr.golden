@@ -1,5 +1,5 @@
-Ident("foo")
-SymbolLeftBracket("[")
-StringSingleQuoted("\'bar\'")
-SymbolRightBracket("]")
-Whitespace("\n")
+Ident@0:3 "foo"
+SymbolLeftBracket@3:4 "["
+StringSingleQuoted@4:9 "\'bar\'"
+SymbolRightBracket@9:10 "]"
+Whitespace@10:11 "\n"

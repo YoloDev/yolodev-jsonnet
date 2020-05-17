@@ -1,5 +1,5 @@
-Ident("foo")
-SymbolLeftParen("(")
-Number("0")
-SymbolRightParen(")")
-Whitespace("\n")
+Ident@0:3 "foo"
+SymbolLeftParen@3:4 "("
+Number@4:5 "0"
+SymbolRightParen@5:6 ")"
+Whitespace@6:7 "\n"

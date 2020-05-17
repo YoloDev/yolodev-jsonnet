@@ -1,4 +1,4 @@
-SymbolLeftParen("(")
-Number("5")
-SymbolRightParen(")")
-Whitespace("\n")
+SymbolLeftParen@0:1 "("
+Number@1:2 "5"
+SymbolRightParen@2:3 ")"
+Whitespace@3:4 "\n"

@@ -1,2 +1,2 @@
-KeywordNull("null")
-Whitespace("\n")
+KeywordNull@0:4 "null"
+Whitespace@4:5 "\n"

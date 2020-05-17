@@ -1,12 +1,12 @@
-Ident("foo")
-SymbolLeftParen("(")
-Ident("a")
-SymbolComma(",")
-Whitespace(" ")
-Ident("b")
-Whitespace(" ")
-OpAssign("=")
-Whitespace(" ")
-Number("0")
-SymbolRightParen(")")
-Whitespace("\n")
+Ident@0:3 "foo"
+SymbolLeftParen@3:4 "("
+Ident@4:5 "a"
+SymbolComma@5:6 ","
+Whitespace@6:7 " "
+Ident@7:8 "b"
+Whitespace@8:9 " "
+OpAssign@9:10 "="
+Whitespace@10:11 " "
+Number@11:12 "0"
+SymbolRightParen@12:13 ")"
+Whitespace@13:14 "\n"

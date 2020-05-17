@@ -1,14 +1,14 @@
-SymbolLeftBracket("[")
-Ident("x")
-Whitespace(" ")
-KeywordFor("for")
-Whitespace(" ")
-Ident("x")
-Whitespace(" ")
-KeywordIn("in")
-Whitespace(" ")
-SymbolLeftBracket("[")
-Number("1")
-SymbolRightBracket("]")
-SymbolRightBracket("]")
-Whitespace("\n")
+SymbolLeftBracket@0:1 "["
+Ident@1:2 "x"
+Whitespace@2:3 " "
+KeywordFor@3:6 "for"
+Whitespace@6:7 " "
+Ident@7:8 "x"
+Whitespace@8:9 " "
+KeywordIn@9:11 "in"
+Whitespace@11:12 " "
+SymbolLeftBracket@12:13 "["
+Number@13:14 "1"
+SymbolRightBracket@14:15 "]"
+SymbolRightBracket@15:16 "]"
+Whitespace@16:17 "\n"

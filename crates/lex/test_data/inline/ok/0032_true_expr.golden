@@ -1,2 +1,2 @@
-KeywordTrue("true")
-Whitespace("\n")
+KeywordTrue@0:4 "true"
+Whitespace@4:5 "\n"

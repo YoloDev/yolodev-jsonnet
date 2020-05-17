@@ -1,2 +1,2 @@
-Ident("foo")
-Whitespace("\n")
+Ident@0:3 "foo"
+Whitespace@3:4 "\n"

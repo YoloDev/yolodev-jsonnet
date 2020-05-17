@@ -1,4 +1,4 @@
-KeywordImport("import")
-Whitespace(" ")
-StringDoubleQuoted("\"test\"")
-Whitespace("\n")
+KeywordImport@0:6 "import"
+Whitespace@6:7 " "
+StringDoubleQuoted@7:13 "\"test\""
+Whitespace@13:14 "\n"

@@ -1,20 +1,20 @@
-SymbolLeftBrace("{")
-SymbolLeftBracket("[")
-Ident("x")
-SymbolRightBracket("]")
-OpColon(":")
-Whitespace(" ")
-KeywordTrue("true")
-SymbolComma(",")
-Whitespace(" ")
-KeywordFor("for")
-Whitespace(" ")
-Ident("x")
-Whitespace(" ")
-KeywordIn("in")
-Whitespace(" ")
-SymbolLeftBracket("[")
-StringSingleQuoted("\'x\'")
-SymbolRightBracket("]")
-SymbolRightBrace("}")
-Whitespace("\n")
+SymbolLeftBrace@0:1 "{"
+SymbolLeftBracket@1:2 "["
+Ident@2:3 "x"
+SymbolRightBracket@3:4 "]"
+OpColon@4:5 ":"
+Whitespace@5:6 " "
+KeywordTrue@6:10 "true"
+SymbolComma@10:11 ","
+Whitespace@11:12 " "
+KeywordFor@12:15 "for"
+Whitespace@15:16 " "
+Ident@16:17 "x"
+Whitespace@17:18 " "
+KeywordIn@18:20 "in"
+Whitespace@20:21 " "
+SymbolLeftBracket@21:22 "["
+StringSingleQuoted@22:25 "\'x\'"
+SymbolRightBracket@25:26 "]"
+SymbolRightBrace@26:27 "}"
+Whitespace@27:28 "\n"

@@ -1,6 +1,6 @@
-OpNot("!")
-Whitespace(" ")
-OpMinus("-")
-Whitespace(" ")
-Number("10")
-Whitespace("\n")
+OpNot@0:1 "!"
+Whitespace@1:2 " "
+OpMinus@2:3 "-"
+Whitespace@3:4 " "
+Number@4:6 "10"
+Whitespace@6:7 "\n"

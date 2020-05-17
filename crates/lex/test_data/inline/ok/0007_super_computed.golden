@@ -1,5 +1,5 @@
-KeywordSuper("super")
-SymbolLeftBracket("[")
-StringSingleQuoted("\'foo\'")
-SymbolRightBracket("]")
-Whitespace("\n")
+KeywordSuper@0:5 "super"
+SymbolLeftBracket@5:6 "["
+StringSingleQuoted@6:11 "\'foo\'"
+SymbolRightBracket@11:12 "]"
+Whitespace@12:13 "\n"

@@ -1,4 +1,4 @@
-KeywordError("error")
-Whitespace(" ")
-StringDoubleQuoted("\"test\"")
-Whitespace("\n")
+KeywordError@0:5 "error"
+Whitespace@5:6 " "
+StringDoubleQuoted@6:12 "\"test\""
+Whitespace@12:13 "\n"

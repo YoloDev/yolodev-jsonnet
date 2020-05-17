@@ -1,12 +1,12 @@
-KeywordIf("if")
-Whitespace(" ")
-KeywordTrue("true")
-Whitespace(" ")
-KeywordThen("then")
-Whitespace(" ")
-KeywordTrue("true")
-Whitespace(" ")
-KeywordElse("else")
-Whitespace(" ")
-KeywordFalse("false")
-Whitespace("\n")
+KeywordIf@0:2 "if"
+Whitespace@2:3 " "
+KeywordTrue@3:7 "true"
+Whitespace@7:8 " "
+KeywordThen@8:12 "then"
+Whitespace@12:13 " "
+KeywordTrue@13:17 "true"
+Whitespace@17:18 " "
+KeywordElse@18:22 "else"
+Whitespace@22:23 " "
+KeywordFalse@23:28 "false"
+Whitespace@28:29 "\n"

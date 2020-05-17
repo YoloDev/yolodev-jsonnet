@@ -1,2 +1,2 @@
-StringDoubleQuoted("\"test\"")
-Whitespace("\n")
+StringDoubleQuoted@0:6 "\"test\""
+Whitespace@6:7 "\n"

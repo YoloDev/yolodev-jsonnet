@@ -1,18 +1,18 @@
-KeywordFunction("function")
-SymbolLeftParen("(")
-Ident("a")
-SymbolComma(",")
-Whitespace(" ")
-Ident("b")
-Whitespace(" ")
-OpAssign("=")
-Whitespace(" ")
-Number("0")
-SymbolRightParen(")")
-Whitespace(" ")
-Ident("a")
-Whitespace(" ")
-OpPlus("+")
-Whitespace(" ")
-Ident("b")
-Whitespace("\n")
+KeywordFunction@0:8 "function"
+SymbolLeftParen@8:9 "("
+Ident@9:10 "a"
+SymbolComma@10:11 ","
+Whitespace@11:12 " "
+Ident@12:13 "b"
+Whitespace@13:14 " "
+OpAssign@14:15 "="
+Whitespace@15:16 " "
+Number@16:17 "0"
+SymbolRightParen@17:18 ")"
+Whitespace@18:19 " "
+Ident@19:20 "a"
+Whitespace@20:21 " "
+OpPlus@21:22 "+"
+Whitespace@22:23 " "
+Ident@23:24 "b"
+Whitespace@24:25 "\n"

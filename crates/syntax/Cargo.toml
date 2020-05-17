@@ -1,0 +1,17 @@
+[package]
+name = "jsonnet-syntax"
+version = "0.1.0"
+authors = ["Aleksander Heintz <alxandr@alxandr.me>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+itertools = "0.9"
+once_cell = "1"
+rowan = "0.10"
+rustc-hash = "1"
+smallvec = "1"
+
+jsonnet-lex = { version = "0.1.0", path = "../lex" }
+jsonnet-parse = { version = "0.1.0", path = "../parse" }
