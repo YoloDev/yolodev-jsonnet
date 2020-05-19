@@ -2,9 +2,9 @@ FROM gitpod/workspace-full
 
 USER gitpod
 
-RUN rustup self update \
-  && rustup toolchain install nightly --allow-downgrade --component clippy --component rustfmt --no-self-update \
-  && rustup default nightly
+RUN /home/gitpod/.cargo/bin/rustup self update \
+  && /home/gitpod/.cargo/bin/rustup toolchain install nightly --allow-downgrade --component clippy --component rustfmt --no-self-update \
+  && /home/gitpod/.cargo/bin/rustup default nightly
 
 # Install custom tools, runtime, etc. using apt-get
 # For example, the command below would install "bastet" - a command line tetris clone:
