@@ -1,0 +1,20 @@
+SOURCE_FILE@0..17
+  ARRAY_COMP_EXPR@0..16
+    L_BRACK@0..1 "["
+    IDENT_EXPR@1..2
+      IDENT@1..2 "x"
+    WHITESPACE@2..3 " "
+    FOR_COMP_SPEC@3..15
+      FOR_KW@3..6 "for"
+      WHITESPACE@6..7 " "
+      IDENT@7..8 "x"
+      WHITESPACE@8..9 " "
+      IN_KW@9..11 "in"
+      WHITESPACE@11..12 " "
+      ARRAY_EXPR@12..15
+        L_BRACK@12..13 "["
+        NUMBER_EXPR@13..14
+          NUMBER@13..14 "1"
+        R_BRACK@14..15 "]"
+    R_BRACK@15..16 "]"
+  WHITESPACE@16..17 "\n"

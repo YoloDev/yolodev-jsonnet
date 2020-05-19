@@ -1,0 +1,7 @@
+SOURCE_FILE@0..4
+  GROUP_EXPR@0..3
+    L_PAREN@0..1 "("
+    NUMBER_EXPR@1..2
+      NUMBER@1..2 "5"
+    R_PAREN@2..3 ")"
+  WHITESPACE@3..4 "\n"

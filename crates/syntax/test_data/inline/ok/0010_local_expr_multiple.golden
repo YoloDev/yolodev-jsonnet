@@ -1,0 +1,28 @@
+SOURCE_FILE@0..34
+  LOCAL_EXPR@0..33
+    LOCAL_KW@0..5 "local"
+    WHITESPACE@5..6 " "
+    BIND_LIST@6..27
+      VALUE_BIND@6..16
+        IDENT@6..9 "foo"
+        WHITESPACE@9..10 " "
+        ASSIGN_OP@10..11 "="
+        WHITESPACE@11..12 " "
+        TRUE_EXPR@12..16
+          TRUE_KW@12..16 "true"
+      COMMA@16..17 ","
+      WHITESPACE@17..18 " "
+      VALUE_BIND@18..27
+        IDENT@18..21 "bar"
+        WHITESPACE@21..22 " "
+        ASSIGN_OP@22..23 "="
+        WHITESPACE@23..24 " "
+        IDENT_EXPR@24..27
+          IDENT@24..27 "foo"
+    WHITESPACE@27..28 " "
+    SEMICOLON@28..29 ";"
+    WHITESPACE@29..30 " "
+    REST@30..33
+      IDENT_EXPR@30..33
+        IDENT@30..33 "bar"
+  WHITESPACE@33..34 "\n"

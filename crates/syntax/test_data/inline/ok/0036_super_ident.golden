@@ -1,0 +1,6 @@
+SOURCE_FILE@0..10
+  SUPER_FIELD_EXPR@0..9
+    SUPER_KW@0..5 "super"
+    DOT@5..6 "."
+    IDENT@6..9 "foo"
+  WHITESPACE@9..10 "\n"

@@ -1,0 +1,4 @@
+SOURCE_FILE@0..7
+  STRING_EXPR@0..6
+    STRING@0..6 "\"test\""
+  WHITESPACE@6..7 "\n"

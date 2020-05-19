@@ -1,0 +1,14 @@
+SOURCE_FILE@0..18
+  IF_EXPR@0..17
+    IF_KW@0..2 "if"
+    WHITESPACE@2..3 " "
+    COND@3..7
+      TRUE_EXPR@3..7
+        TRUE_KW@3..7 "true"
+    WHITESPACE@7..8 " "
+    THEN_KW@8..12 "then"
+    WHITESPACE@12..13 " "
+    TRUE_BRANCH@13..17
+      NULL_EXPR@13..17
+        NULL_KW@13..17 "null"
+  WHITESPACE@17..18 "\n"

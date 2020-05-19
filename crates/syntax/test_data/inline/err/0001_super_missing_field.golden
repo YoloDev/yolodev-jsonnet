@@ -1,0 +1,5 @@
+SOURCE_FILE@0..6
+  SUPER_COMPUTED_EXPR@0..5
+    SUPER_KW@0..5 "super"
+  WHITESPACE@5..6 "\n"
+error 5..5: expected '.' or '['

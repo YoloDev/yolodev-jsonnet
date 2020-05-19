@@ -1,0 +1,4 @@
+SOURCE_FILE@0..2
+  ROOT_EXPR@0..1
+    DOLLAR@0..1 "$"
+  WHITESPACE@1..2 "\n"

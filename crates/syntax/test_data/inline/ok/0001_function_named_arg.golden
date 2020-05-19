@@ -1,0 +1,15 @@
+SOURCE_FILE@0..13
+  APPLY_EXPR@0..12
+    IDENT_EXPR@0..3
+      IDENT@0..3 "foo"
+    ARG_LIST@3..12
+      L_PAREN@3..4 "("
+      NAMED_ARGUMENT@4..11
+        IDENT@4..7 "bar"
+        WHITESPACE@7..8 " "
+        ASSIGN_OP@8..9 "="
+        WHITESPACE@9..10 " "
+        NUMBER_EXPR@10..11
+          NUMBER@10..11 "0"
+      R_PAREN@11..12 ")"
+  WHITESPACE@12..13 "\n"

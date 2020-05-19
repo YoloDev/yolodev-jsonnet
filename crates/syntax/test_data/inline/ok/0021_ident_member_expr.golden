@@ -1,0 +1,7 @@
+SOURCE_FILE@0..8
+  IDENT_FIELD_ACCESS_EXPR@0..7
+    IDENT_EXPR@0..3
+      IDENT@0..3 "foo"
+    DOT@3..4 "."
+    IDENT@4..7 "bar"
+  WHITESPACE@7..8 "\n"

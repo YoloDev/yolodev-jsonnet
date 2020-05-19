@@ -21,7 +21,7 @@ mod syntax_node;
 pub mod ast;
 
 pub use crate::{
-  ast::{AstNode, AstToken},
+  ast::{AstNode, AstToken, SourceFile},
   syntax_error::SyntaxError,
   syntax_node::{
     Direction, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxToken, SyntaxTreeBuilder,
@@ -71,116 +71,177 @@ impl<T> Parse<T> {
   }
 }
 
-// impl<T: AstNode> Parse<T> {
-//   pub fn to_syntax(self) -> Parse<SyntaxNode> {
-//     Parse {
-//       green: self.green,
-//       errors: self.errors,
-//       _ty: PhantomData,
-//     }
-//   }
+impl<T: AstNode> Parse<T> {
+  pub fn to_syntax(self) -> Parse<SyntaxNode> {
+    Parse {
+      green: self.green,
+      errors: self.errors,
+      _ty: PhantomData,
+    }
+  }
 
-//   pub fn tree(&self) -> T {
-//     T::cast(self.syntax_node()).unwrap()
-//   }
+  pub fn tree(&self) -> T {
+    T::cast(self.syntax_node()).unwrap()
+  }
 
-//   pub fn errors(&self) -> &[SyntaxError] {
-//     &*self.errors
-//   }
+  pub fn errors(&self) -> &[SyntaxError] {
+    &*self.errors
+  }
 
-//   pub fn ok(self) -> Result<T, Arc<Vec<SyntaxError>>> {
-//     if self.errors.is_empty() {
-//       Ok(self.tree())
-//     } else {
-//       Err(self.errors)
-//     }
-//   }
-// }
+  pub fn ok(self) -> Result<T, Arc<Vec<SyntaxError>>> {
+    if self.errors.is_empty() {
+      Ok(self.tree())
+    } else {
+      Err(self.errors)
+    }
+  }
+}
 
-// impl Parse<SyntaxNode> {
-//   pub fn cast<N: AstNode>(self) -> Option<Parse<N>> {
-//     if N::cast(self.syntax_node()).is_some() {
-//       Some(Parse {
-//         green: self.green,
-//         errors: self.errors,
-//         _ty: PhantomData,
-//       })
-//     } else {
-//       None
-//     }
-//   }
-// }
+impl Parse<SyntaxNode> {
+  pub fn cast<N: AstNode>(self) -> Option<Parse<N>> {
+    if N::cast(self.syntax_node()).is_some() {
+      Some(Parse {
+        green: self.green,
+        errors: self.errors,
+        _ty: PhantomData,
+      })
+    } else {
+      None
+    }
+  }
+}
 
-// impl Parse<SourceFile> {
-//   pub fn debug_dump(&self) -> String {
-//       let mut buf = format!("{:#?}", self.tree().syntax());
-//       for err in self.errors.iter() {
-//           format_to!(buf, "error {:?}: {}\n", err.range(), err);
-//       }
-//       buf
-//   }
+impl Parse<SourceFile> {
+  pub fn debug_dump(&self) -> String {
+    use core::fmt::Write;
 
-//   pub fn reparse(&self, indel: &Indel) -> Parse<SourceFile> {
-//       self.incremental_reparse(indel).unwrap_or_else(|| self.full_reparse(indel))
-//   }
+    let mut buf = format!("{:#?}", self.tree().syntax());
+    for err in self.errors.iter() {
+      write!(buf, "error {:?}: {}\n", err.range(), err).unwrap();
+    }
 
-//   fn incremental_reparse(&self, indel: &Indel) -> Option<Parse<SourceFile>> {
-//       // FIXME: validation errors are not handled here
-//       parsing::incremental_reparse(self.tree().syntax(), indel, self.errors.to_vec()).map(
-//           |(green_node, errors, _reparsed_range)| Parse {
-//               green: green_node,
-//               errors: Arc::new(errors),
-//               _ty: PhantomData,
-//           },
-//       )
-//   }
+    buf
+  }
 
-//   fn full_reparse(&self, indel: &Indel) -> Parse<SourceFile> {
-//       let mut text = self.tree().syntax().text().to_string();
-//       indel.apply(&mut text);
-//       SourceFile::parse(&text)
-//   }
-// }
+  // pub fn reparse(&self, indel: &Indel) -> Parse<SourceFile> {
+  //     self.incremental_reparse(indel).unwrap_or_else(|| self.full_reparse(indel))
+  // }
 
-// impl SourceFile {
-//   pub fn parse(text: &str) -> Parse<SourceFile> {
-//       let (green, mut errors) = parsing::parse_text(text);
-//       let root = SyntaxNode::new_root(green.clone());
+  // fn incremental_reparse(&self, indel: &Indel) -> Option<Parse<SourceFile>> {
+  //     // FIXME: validation errors are not handled here
+  //     parsing::incremental_reparse(self.tree().syntax(), indel, self.errors.to_vec()).map(
+  //         |(green_node, errors, _reparsed_range)| Parse {
+  //             green: green_node,
+  //             errors: Arc::new(errors),
+  //             _ty: PhantomData,
+  //         },
+  //     )
+  // }
 
-//       if cfg!(debug_assertions) {
-//           validation::validate_block_structure(&root);
-//       }
+  // fn full_reparse(&self, indel: &Indel) -> Parse<SourceFile> {
+  //     let mut text = self.tree().syntax().text().to_string();
+  //     indel.apply(&mut text);
+  //     SourceFile::parse(&text)
+  // }
+}
 
-//       errors.extend(validation::validate(&root));
+impl SourceFile {
+  pub fn parse(text: &str) -> Parse<SourceFile> {
+    let (green, mut errors) = parse::parse_text(text);
+    let root = SyntaxNode::new_root(green.clone());
 
-//       assert_eq!(root.kind(), SyntaxKind::SOURCE_FILE);
-//       Parse { green, errors: Arc::new(errors), _ty: PhantomData }
-//   }
-// }
+    // if cfg!(debug_assertions) {
+    //   validation::validate_block_structure(&root);
+    // }
 
-// /// Matches a `SyntaxNode` against an `ast` type.
-// ///
-// /// # Example:
-// ///
-// /// ```ignore
-// /// match_ast! {
-// ///     match node {
-// ///         ast::CallExpr(it) => { ... },
-// ///         ast::MethodCallExpr(it) => { ... },
-// ///         ast::MacroCall(it) => { ... },
-// ///         _ => None,
-// ///     }
-// /// }
-// /// ```
-// #[macro_export]
-// macro_rules! match_ast {
-//     (match $node:ident { $($tt:tt)* }) => { match_ast!(match ($node) { $($tt)* }) };
+    // errors.extend(validation::validate(&root));
 
-//     (match ($node:expr) {
-//         $( ast::$ast:ident($it:ident) => $res:expr, )*
-//         _ => $catch_all:expr $(,)?
-//     }) => {{
-//         $( if let Some($it) = ast::$ast::cast($node.clone()) { $res } else )*
-//         { $catch_all }
-//     }};
-// }
+    assert_eq!(root.kind(), SyntaxKind::SOURCE_FILE);
+    Parse {
+      green,
+      errors: Arc::new(errors),
+      _ty: PhantomData,
+    }
+  }
+}
+
+/// Matches a `SyntaxNode` against an `ast` type.
+///
+/// # Example:
+///
+/// ```ignore
+/// match_ast! {
+///     match node {
+///         ast::CallExpr(it) => { ... },
+///         ast::MethodCallExpr(it) => { ... },
+///         ast::MacroCall(it) => { ... },
+///         _ => None,
+///     }
+/// }
+/// ```
+#[macro_export]
+macro_rules! match_ast {
+  (match $node:ident { $($tt:tt)* }) => { match_ast!(match ($node) { $($tt)* }) };
+
+  (match ($node:expr) {
+    $( ast::$ast:ident($it:ident) => $res:expr, )*
+    _ => $catch_all:expr $(,)?
+  }) => {{
+    $( if let Some($it) = ast::$ast::cast($node.clone()) { $res } else )*
+    { $catch_all }
+  }};
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use core::fmt;
+
+  #[derive(PartialEq, Eq, Clone, Copy)]
+  struct PrettyString<'a>(&'a str);
+
+  impl<'a> PrettyString<'a> {
+    #[inline]
+    fn new<S: AsRef<str> + ?Sized>(value: &'a S) -> Self {
+      PrettyString(value.as_ref())
+    }
+  }
+
+  impl<'a> fmt::Debug for PrettyString<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+      f.write_str(self.0)
+    }
+  }
+
+  macro_rules! assert_eq {
+    ($left:expr, $right:expr $(,$($rest:tt)*)?) => {
+      pretty_assertions::assert_eq!(
+        PrettyString::new($left),
+        PrettyString::new($right)
+        $(,$($rest)*)?
+      );
+    }
+  }
+
+  #[test_gen::test_golden("test_data/inline/ok/*.jsonnet")]
+  fn golden_ok(content: &str, _: &str) -> String {
+    let source_file = SourceFile::parse(content);
+    std::assert_eq!(
+      source_file.errors().len(),
+      0,
+      "ok files should have no errors"
+    );
+    source_file.debug_dump()
+  }
+
+  #[test_gen::test_golden("test_data/inline/err/*.jsonnet")]
+  fn golden_err(content: &str, _: &str) -> String {
+    let source_file = SourceFile::parse(content);
+    source_file.debug_dump()
+  }
+
+  #[test]
+  fn tmp() {
+    SourceFile::parse("@\"test\"");
+  }
+}

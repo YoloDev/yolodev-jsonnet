@@ -1,0 +1,4 @@
+SOURCE_FILE@0..4
+  IDENT_EXPR@0..3
+    IDENT@0..3 "foo"
+  WHITESPACE@3..4 "\n"

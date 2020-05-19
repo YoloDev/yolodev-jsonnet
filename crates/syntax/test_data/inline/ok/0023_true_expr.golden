@@ -1,0 +1,4 @@
+SOURCE_FILE@0..5
+  TRUE_EXPR@0..4
+    TRUE_KW@0..4 "true"
+  WHITESPACE@4..5 "\n"

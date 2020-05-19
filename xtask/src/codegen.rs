@@ -10,11 +10,11 @@ pub use self::gen_parser_tests::generate_parser_tests;
 
 const GRAMMAR_DIR: &str = "crates/parse/src/grammar";
 const OK_INLINE_TESTS_DIRS: &[&str] = &[
-  "crates/parse/test_data/inline/ok",
+  "crates/syntax/test_data/inline/ok",
   "crates/lex/test_data/inline/ok",
 ];
 const ERR_INLINE_TESTS_DIRS: &[&str] = &[
-  "crates/parse/test_data/inline/err",
+  "crates/syntax/test_data/inline/err",
   "crates/lex/test_data/inline/err",
 ];
 

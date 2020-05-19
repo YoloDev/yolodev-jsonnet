@@ -1,0 +1,4 @@
+SOURCE_FILE@0..8
+  STRING_EXPR@0..7
+    VERBATIM_STRING@0..7 "@\"test\""
+  WHITESPACE@7..8 "\n"

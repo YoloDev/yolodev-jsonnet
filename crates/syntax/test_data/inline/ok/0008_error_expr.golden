@@ -1,0 +1,7 @@
+SOURCE_FILE@0..13
+  ERROR_EXPR@0..12
+    ERROR_KW@0..5 "error"
+    WHITESPACE@5..6 " "
+    STRING_EXPR@6..12
+      STRING@6..12 "\"test\""
+  WHITESPACE@12..13 "\n"

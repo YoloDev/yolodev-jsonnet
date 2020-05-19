@@ -1,0 +1,6 @@
+SOURCE_FILE@0..17
+  IMPORTSTR_EXPR@0..16
+    IMPORTSTR_KW@0..9 "importstr"
+    WHITESPACE@9..10 " "
+    STRING@10..16 "\"test\""
+  WHITESPACE@16..17 "\n"

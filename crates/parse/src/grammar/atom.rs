@@ -1,7 +1,14 @@
 use super::*;
 
-pub(crate) const LITERAL_FIRST: TokenSet =
-  token_set![T![true], T![false], NUMBER, STRING, T![null],];
+pub(crate) const LITERAL_FIRST: TokenSet = token_set![
+  T![true],
+  T![false],
+  NUMBER,
+  STRING,
+  VERBATIM_STRING,
+  BLOCK_STRING,
+  T![null],
+];
 
 pub(super) fn opt_literal_expr<S: TokenSource>(p: &mut Parser<S>) -> Option<CompletedMarker> {
   if !p.at_ts(LITERAL_FIRST) {

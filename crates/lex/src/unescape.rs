@@ -1,8 +1,6 @@
 //! Utilities for validating string and turning them into
 //! values they represent.
 
-use core::str::Chars;
-
 #[derive(Debug, PartialEq, Eq)]
 pub enum EscapeError {
   EscapeSequenceUnterminated,

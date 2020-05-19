@@ -1,0 +1,4 @@
+SOURCE_FILE@0..5
+  SELF_EXPR@0..4
+    SELF_KW@0..4 "self"
+  WHITESPACE@4..5 "\n"

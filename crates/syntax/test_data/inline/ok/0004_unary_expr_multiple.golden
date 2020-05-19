@@ -1,0 +1,10 @@
+SOURCE_FILE@0..7
+  UNARY_EXPR@0..6
+    NOT_OP@0..1 "!"
+    WHITESPACE@1..2 " "
+    UNARY_EXPR@2..6
+      MINUS_OP@2..3 "-"
+      WHITESPACE@3..4 " "
+      NUMBER_EXPR@4..6
+        NUMBER@4..6 "10"
+  WHITESPACE@6..7 "\n"

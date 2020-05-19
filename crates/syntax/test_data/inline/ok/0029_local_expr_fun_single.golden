@@ -1,0 +1,39 @@
+SOURCE_FILE@0..34
+  LOCAL_EXPR@0..33
+    LOCAL_KW@0..5 "local"
+    WHITESPACE@5..6 " "
+    BIND_LIST@6..27
+      FUNCTION_BIND@6..27
+        IDENT@6..9 "foo"
+        PARAM_LIST@9..19
+          L_PAREN@9..10 "("
+          PARAM@10..11
+            IDENT@10..11 "a"
+          COMMA@11..12 ","
+          WHITESPACE@12..13 " "
+          PARAM@13..18
+            IDENT@13..14 "b"
+            WHITESPACE@14..15 " "
+            ASSIGN_OP@15..16 "="
+            WHITESPACE@16..17 " "
+            NUMBER_EXPR@17..18
+              NUMBER@17..18 "2"
+          R_PAREN@18..19 ")"
+        WHITESPACE@19..20 " "
+        ASSIGN_OP@20..21 "="
+        WHITESPACE@21..22 " "
+        BINARY_EXPR@22..27
+          IDENT_EXPR@22..23
+            IDENT@22..23 "a"
+          WHITESPACE@23..24 " "
+          PLUS_OP@24..25 "+"
+          WHITESPACE@25..26 " "
+          IDENT_EXPR@26..27
+            IDENT@26..27 "b"
+    WHITESPACE@27..28 " "
+    SEMICOLON@28..29 ";"
+    WHITESPACE@29..30 " "
+    REST@30..33
+      IDENT_EXPR@30..33
+        IDENT@30..33 "foo"
+  WHITESPACE@33..34 "\n"

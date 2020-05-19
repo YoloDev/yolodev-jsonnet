@@ -1,0 +1,14 @@
+SOURCE_FILE@0..19
+  ASSERT_EXPR@0..18
+    ASSERT_KW@0..6 "assert"
+    WHITESPACE@6..7 " "
+    COND@7..11
+      TRUE_EXPR@7..11
+        TRUE_KW@7..11 "true"
+    WHITESPACE@11..12 " "
+    SEMICOLON@12..13 ";"
+    WHITESPACE@13..14 " "
+    REST@14..18
+      NULL_EXPR@14..18
+        NULL_KW@14..18 "null"
+  WHITESPACE@18..19 "\n"

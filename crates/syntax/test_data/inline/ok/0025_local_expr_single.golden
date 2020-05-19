@@ -1,0 +1,19 @@
+SOURCE_FILE@0..23
+  LOCAL_EXPR@0..22
+    LOCAL_KW@0..5 "local"
+    WHITESPACE@5..6 " "
+    BIND_LIST@6..16
+      VALUE_BIND@6..16
+        IDENT@6..9 "foo"
+        WHITESPACE@9..10 " "
+        ASSIGN_OP@10..11 "="
+        WHITESPACE@11..12 " "
+        TRUE_EXPR@12..16
+          TRUE_KW@12..16 "true"
+    WHITESPACE@16..17 " "
+    SEMICOLON@17..18 ";"
+    WHITESPACE@18..19 " "
+    REST@19..22
+      IDENT_EXPR@19..22
+        IDENT@19..22 "foo"
+  WHITESPACE@22..23 "\n"

@@ -1,0 +1,96 @@
+SOURCE_FILE@0..82
+  LOCAL_EXPR@0..81
+    LOCAL_KW@0..5 "local"
+    WHITESPACE@5..6 " "
+    BIND_LIST@6..76
+      FUNCTION_BIND@6..27
+        IDENT@6..9 "foo"
+        PARAM_LIST@9..19
+          L_PAREN@9..10 "("
+          PARAM@10..11
+            IDENT@10..11 "a"
+          COMMA@11..12 ","
+          WHITESPACE@12..13 " "
+          PARAM@13..18
+            IDENT@13..14 "b"
+            WHITESPACE@14..15 " "
+            ASSIGN_OP@15..16 "="
+            WHITESPACE@16..17 " "
+            NUMBER_EXPR@17..18
+              NUMBER@17..18 "2"
+          R_PAREN@18..19 ")"
+        WHITESPACE@19..20 " "
+        ASSIGN_OP@20..21 "="
+        WHITESPACE@21..22 " "
+        BINARY_EXPR@22..27
+          IDENT_EXPR@22..23
+            IDENT@22..23 "a"
+          WHITESPACE@23..24 " "
+          PLUS_OP@24..25 "+"
+          WHITESPACE@25..26 " "
+          IDENT_EXPR@26..27
+            IDENT@26..27 "b"
+      COMMA@27..28 ","
+      WHITESPACE@28..35 "\n      "
+      FUNCTION_BIND@35..76
+        IDENT@35..38 "bar"
+        PARAM_LIST@38..52
+          L_PAREN@38..39 "("
+          PARAM@39..44
+            IDENT@39..40 "a"
+            WHITESPACE@40..41 " "
+            ASSIGN_OP@41..42 "="
+            WHITESPACE@42..43 " "
+            NUMBER_EXPR@43..44
+              NUMBER@43..44 "1"
+          COMMA@44..45 ","
+          WHITESPACE@45..46 " "
+          PARAM@46..51
+            IDENT@46..47 "b"
+            WHITESPACE@47..48 " "
+            ASSIGN_OP@48..49 "="
+            WHITESPACE@49..50 " "
+            NUMBER_EXPR@50..51
+              NUMBER@50..51 "2"
+          R_PAREN@51..52 ")"
+        WHITESPACE@52..53 " "
+        ASSIGN_OP@53..54 "="
+        WHITESPACE@54..55 " "
+        BINARY_EXPR@55..76
+          APPLY_EXPR@55..64
+            IDENT_EXPR@55..58
+              IDENT@55..58 "foo"
+            ARG_LIST@58..64
+              L_PAREN@58..59 "("
+              POSITIONAL_ARGUMENT@59..60
+                IDENT_EXPR@59..60
+                  IDENT@59..60 "a"
+              COMMA@60..61 ","
+              WHITESPACE@61..62 " "
+              POSITIONAL_ARGUMENT@62..63
+                IDENT_EXPR@62..63
+                  IDENT@62..63 "b"
+              R_PAREN@63..64 ")"
+          WHITESPACE@64..65 " "
+          PLUS_OP@65..66 "+"
+          WHITESPACE@66..67 " "
+          APPLY_EXPR@67..76
+            IDENT_EXPR@67..70
+              IDENT@67..70 "foo"
+            ARG_LIST@70..76
+              L_PAREN@70..71 "("
+              POSITIONAL_ARGUMENT@71..72
+                IDENT_EXPR@71..72
+                  IDENT@71..72 "a"
+              COMMA@72..73 ","
+              WHITESPACE@73..74 " "
+              POSITIONAL_ARGUMENT@74..75
+                IDENT_EXPR@74..75
+                  IDENT@74..75 "b"
+              R_PAREN@75..76 ")"
+    SEMICOLON@76..77 ";"
+    WHITESPACE@77..78 "\n"
+    REST@78..81
+      IDENT_EXPR@78..81
+        IDENT@78..81 "bar"
+  WHITESPACE@81..82 "\n"

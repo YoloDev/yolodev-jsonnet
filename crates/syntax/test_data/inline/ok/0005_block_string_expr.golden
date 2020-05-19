@@ -1,0 +1,4 @@
+SOURCE_FILE@0..15
+  STRING_EXPR@0..14
+    BLOCK_STRING@0..14 "|||\n  test\n|||"
+  WHITESPACE@14..15 "\n"

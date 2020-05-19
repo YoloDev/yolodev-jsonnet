@@ -1,0 +1,29 @@
+SOURCE_FILE@0..28
+  OBJECT_COMP_EXPR@0..27
+    L_CURLY@0..1 "{"
+    VALUE_OBJ_FIELD@1..10
+      COMPUTED_FIELD_NAME@1..4
+        L_BRACK@1..2 "["
+        IDENT_EXPR@2..3
+          IDENT@2..3 "x"
+        R_BRACK@3..4 "]"
+      COLON_OP@4..5 ":"
+      WHITESPACE@5..6 " "
+      TRUE_EXPR@6..10
+        TRUE_KW@6..10 "true"
+    COMMA@10..11 ","
+    WHITESPACE@11..12 " "
+    FOR_COMP_SPEC@12..26
+      FOR_KW@12..15 "for"
+      WHITESPACE@15..16 " "
+      IDENT@16..17 "x"
+      WHITESPACE@17..18 " "
+      IN_KW@18..20 "in"
+      WHITESPACE@20..21 " "
+      ARRAY_EXPR@21..26
+        L_BRACK@21..22 "["
+        STRING_EXPR@22..25
+          STRING@22..25 "\'x\'"
+        R_BRACK@25..26 "]"
+    R_CURLY@26..27 "}"
+  WHITESPACE@27..28 "\n"

@@ -1,0 +1,9 @@
+SOURCE_FILE@0..13
+  SUPER_COMPUTED_EXPR@0..12
+    SUPER_KW@0..5 "super"
+    COMPUTED_FIELD_NAME@5..12
+      L_BRACK@5..6 "["
+      STRING_EXPR@6..11
+        STRING@6..11 "\'foo\'"
+      R_BRACK@11..12 "]"
+  WHITESPACE@12..13 "\n"

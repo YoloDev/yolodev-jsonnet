@@ -1,1 +1,0 @@
-assert true : "message" ; null

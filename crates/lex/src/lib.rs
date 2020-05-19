@@ -520,12 +520,10 @@ mod tests {
     ($src:expr, [$(
       $tok:expr
       $(=> $val:expr)?
-    ),*$(,)?]) => {{
+    ),*$(,)?]) => {#[allow(unused)] {
       let src: &str = $src;
       let mut lex = Lexer::new(src);
-      #[allow(unused_mut)]
       let mut index = 0;
-      #[allow(unused_mut)]
       let mut offset = 0;
       $({
         let actual = lex.next().expect(&format!("Expected token {}", index + 1));

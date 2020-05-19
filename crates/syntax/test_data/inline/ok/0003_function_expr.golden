@@ -1,0 +1,27 @@
+SOURCE_FILE@0..25
+  FUNCTION_EXPR@0..24
+    FUNCTION_KW@0..8 "function"
+    PARAM_LIST@8..18
+      L_PAREN@8..9 "("
+      PARAM@9..10
+        IDENT@9..10 "a"
+      COMMA@10..11 ","
+      WHITESPACE@11..12 " "
+      PARAM@12..17
+        IDENT@12..13 "b"
+        WHITESPACE@13..14 " "
+        ASSIGN_OP@14..15 "="
+        WHITESPACE@15..16 " "
+        NUMBER_EXPR@16..17
+          NUMBER@16..17 "0"
+      R_PAREN@17..18 ")"
+    WHITESPACE@18..19 " "
+    BINARY_EXPR@19..24
+      IDENT_EXPR@19..20
+        IDENT@19..20 "a"
+      WHITESPACE@20..21 " "
+      PLUS_OP@21..22 "+"
+      WHITESPACE@22..23 " "
+      IDENT_EXPR@23..24
+        IDENT@23..24 "b"
+  WHITESPACE@24..25 "\n"

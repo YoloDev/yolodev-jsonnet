@@ -1,0 +1,4 @@
+SOURCE_FILE@0..5
+  NULL_EXPR@0..4
+    NULL_KW@0..4 "null"
+  WHITESPACE@4..5 "\n"

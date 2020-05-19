@@ -1,0 +1,4 @@
+SOURCE_FILE@0..3
+  NUMBER_EXPR@0..2
+    NUMBER@0..2 "42"
+  WHITESPACE@2..3 "\n"
