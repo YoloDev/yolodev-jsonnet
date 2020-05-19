@@ -1,0 +1,30 @@
+{
+  "name": "YoloDev JSONnet",
+  "dockerFile": "Dockerfile",
+  "runArgs": [ "--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined" ],
+
+  // Set *default* container specific settings.json values on container create.
+	"settings": {
+		"terminal.integrated.shell.linux": "/bin/bash",
+		"lldb.executable": "/usr/bin/lldb"
+  },
+
+  // Add the IDs of extensions you want installed when the container is created.
+	"extensions": [
+		"matklad.rust-analyzer",
+		"bungcip.better-toml",
+    "vadimcn.vscode-lldb",
+    "editorconfig.editorconfig",
+    "serayuzgur.crates",
+    "eamodio.gitlens"
+  ],
+
+  // Use 'forwardPorts' to make a list of ports inside the container available locally.
+	// "forwardPorts": [],
+
+	// Use 'postCreateCommand' to run commands after the container is created.
+	// "postCreateCommand": "rustc --version",
+
+	// Comment out to run as root instead
+	"remoteUser": "vscode"
+}
