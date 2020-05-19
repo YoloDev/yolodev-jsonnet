@@ -11,6 +11,8 @@ mod str_block;
 use op::{lex_operator, Operator};
 use str_block::{lex_str_block, StringBlockToken};
 
+pub mod unescape;
+
 #[derive(Logos, Debug, PartialEq)]
 enum RawToken {
   #[token("assert")]

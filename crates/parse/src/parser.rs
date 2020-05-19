@@ -127,10 +127,10 @@ impl<'t, S: TokenSource> Parser<'t, S> {
     false
   }
 
-  // /// Create an error node and consume the next token.
-  // pub(crate) fn err_and_bump(&mut self, message: &str) {
-  //   self.err_recover(message, TokenSet::EMPTY);
-  // }
+  /// Create an error node and consume the next token.
+  pub(crate) fn err_and_bump(&mut self, message: &str) {
+    self.err_recover(message, TokenSet::EMPTY);
+  }
 
   /// Create an error node and consume the next token.
   pub(crate) fn err_recover(&mut self, message: &str, recovery: TokenSet) {

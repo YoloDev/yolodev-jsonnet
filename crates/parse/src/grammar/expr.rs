@@ -105,16 +105,28 @@ fn assert_expr<S: TokenSource>(p: &mut Parser<S>) -> CompletedMarker {
   assert!(p.at(T![assert]));
   let m = p.start();
   p.bump(T![assert]);
-  expr(p);
+
+  {
+    let m = p.start();
+    expr(p);
+    m.complete(p, COND);
+  }
 
   // test assert_with_message
   // assert true : "message" ; null
   if p.eat(T![:]) {
+    let m = p.start();
     expr(p);
+    m.complete(p, ASSERT_MESSAGE);
   }
 
   p.expect(T![;]);
-  expr(p);
+  {
+    let m = p.start();
+    expr(p);
+    m.complete(p, REST);
+  }
+
   m.complete(p, ASSERT_EXPR)
 }
 
@@ -134,15 +146,27 @@ fn if_expr<S: TokenSource>(p: &mut Parser<S>) -> CompletedMarker {
   assert!(p.at(T![if]));
   let m = p.start();
   p.bump(T![if]);
-  expr(p);
+
+  {
+    let m = p.start();
+    expr(p);
+    m.complete(p, COND);
+  }
 
   p.expect(T![then]);
-  expr(p);
+
+  {
+    let m = p.start();
+    expr(p);
+    m.complete(p, TRUE_BRANCH);
+  }
 
   // test if_then_else_expr
   // if true then true else false
   if p.eat(T![else]) {
+    let m = p.start();
     expr(p);
+    m.complete(p, FALSE_BRANCH);
   }
 
   m.complete(p, IF_EXPR)
@@ -154,7 +178,13 @@ fn import_expr<S: TokenSource>(p: &mut Parser<S>) -> CompletedMarker {
   assert!(p.at(T![import]));
   let m = p.start();
   p.bump(T![import]);
-  p.expect(STRING);
+  if !p.eat(STRING) && !p.eat(VERBATIM_STRING) {
+    if p.eat(BLOCK_STRING) {
+      p.error("import does not support block strings");
+    } else {
+      p.err_and_bump("expected string");
+    }
+  }
   m.complete(p, IMPORT_EXPR)
 }
 
@@ -164,7 +194,13 @@ fn importstr_expr<S: TokenSource>(p: &mut Parser<S>) -> CompletedMarker {
   assert!(p.at(T![importstr]));
   let m = p.start();
   p.bump(T![importstr]);
-  p.expect(STRING);
+  if !p.eat(STRING) && !p.eat(VERBATIM_STRING) {
+    if p.eat(BLOCK_STRING) {
+      p.error("import does not support block strings");
+    } else {
+      p.err_and_bump("expected string");
+    }
+  }
   m.complete(p, IMPORTSTR_EXPR)
 }
 
@@ -187,20 +223,31 @@ fn local_expr<S: TokenSource>(p: &mut Parser<S>) -> CompletedMarker {
   // local foo(a, b = 2) = a + b,
   //       bar(a = 1, b = 2) = foo(a, b) + foo(a, b);
   // bar
-  while !p.at(EOF) && !p.at(T![;]) {
-    if bind_count > 0 {
-      p.expect(T![,]);
+  {
+    let m = p.start();
+    while !p.at(EOF) && !p.at(T![;]) {
+      if bind_count > 0 {
+        p.expect(T![,]);
+      }
+
+      if !p.at(IDENT) {
+        break;
+      }
+
+      bind_count += 1;
+      bind(p);
     }
 
-    if !p.at(IDENT) {
-      break;
-    }
-
-    bind_count += 1;
-    bind(p);
+    m.complete(p, BIND_LIST);
   }
 
   p.expect(T![;]);
+
+  {
+    let m = p.start();
+    expr(p);
+    m.complete(p, REST);
+  }
 
   m.complete(p, LOCAL_EXPR)
 }
@@ -239,7 +286,7 @@ fn trailer_helper<S: TokenSource>(p: &mut Parser<S>, mut e: CompletedMarker) -> 
     } else if p.at(T!['[']) {
       // test computed_member_expr
       // foo['bar']
-      e = complete_member_computed_expr(p, e);
+      e = complete_member_computed_or_slice_expr(p, e);
     } else if p.at(T![in]) && p.nth_at(1, T![super]) {
       // test in_super_expr
       // 'foo' in super
@@ -275,16 +322,58 @@ fn complete_member_dot_expr<S: TokenSource>(
   m.complete(p, IDENT_FIELD_ACCESS_EXPR)
 }
 
-fn complete_member_computed_expr<S: TokenSource>(
+fn complete_member_computed_or_slice_expr<S: TokenSource>(
   p: &mut Parser<S>,
   e: CompletedMarker,
 ) -> CompletedMarker {
   assert!(p.at(T!['[']));
   let m = e.precede(p);
   p.bump(T!['[']);
-  expr(p);
+
+  let mut count = 0u8;
+  let mut ready_for_expr = true;
+
+  while !p.at(EOF) && !p.at(T![']']) {
+    if p.eat(T![:]) {
+      if count > 1 {
+        p.error("too many colons in slice");
+        continue;
+      }
+
+      count += 1;
+      ready_for_expr = true;
+    } else if p.eat(T![::]) {
+      if count > 0 {
+        p.error("too many colons in slice");
+        count += 1; // treat as single colon
+        continue;
+      }
+
+      count += 2;
+      ready_for_expr = true;
+    } else if ready_for_expr {
+      if !expr(p) {
+        break;
+      }
+    } else {
+      p.error(match count {
+        1 => "expected ':' or ']'",
+        _ => "expected ']'",
+      });
+      break;
+    }
+  }
+
   p.expect(T![']']);
-  m.complete(p, COMPUTED_FIELD_ACCESS_EXPR)
+
+  m.complete(
+    p,
+    if count == 0 {
+      COMPUTED_FIELD_ACCESS_EXPR
+    } else {
+      SLICE_EXPR
+    },
+  )
 }
 
 fn complete_apply_expr<S: TokenSource>(p: &mut Parser<S>, e: CompletedMarker) -> CompletedMarker {

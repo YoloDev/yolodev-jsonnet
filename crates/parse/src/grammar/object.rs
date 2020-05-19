@@ -77,10 +77,17 @@ fn obj_assert<S: TokenSource>(p: &mut Parser<S>) -> CompletedMarker {
   assert!(p.at(T![assert]));
   let m = p.start();
   p.bump(T![assert]);
-  expr(p);
 
-  if p.at(T![:]) {
+  {
+    let m = p.start();
     expr(p);
+    m.complete(p, COND);
+  }
+
+  if p.eat(T![:]) {
+    let m = p.start();
+    expr(p);
+    m.complete(p, ASSERT_MESSAGE);
   }
 
   m.complete(p, ASSERT_OBJ_FIELD)
@@ -90,7 +97,21 @@ fn obj_value_field<S: TokenSource>(p: &mut Parser<S>) -> CompletedMarker {
   assert!(p.at_ts(FIELD_START));
   let m = p.start();
   field_name(p);
+
+  let mut is_function = false;
+  if p.at(T!['(']) {
+    params(p);
+    is_function = true;
+  }
+
   p.expect(T![:]);
   expr(p);
-  m.complete(p, VALUE_OBJ_FIELD)
+  m.complete(
+    p,
+    if is_function {
+      FUNCTION_OBJ_FIELD
+    } else {
+      VALUE_OBJ_FIELD
+    },
+  )
 }

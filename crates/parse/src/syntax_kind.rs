@@ -19,15 +19,15 @@ macro_rules! define_syntax_kind {
     }
   };
 
-  (@ $ctx:tt [$($acc:tt)*] $m_acc:tt $name:ident #[$($m:tt)*] $($rest:tt)*) => {
+  (@ $ctx:tt [$($acc:tt)*] [$($m_acc:tt)*] $name:ident #[$($m:tt)*] $($rest:tt)*) => {
     define_syntax_kind! {
-      @ $ctx [$($acc)* #[$($m)*] $name,] $m_acc $($rest)*
+      @ $ctx [$($acc)* #[$($m)*] $name,] [$($m_acc)* [$name] => { $crate::SyntaxKind::$name };] $($rest)*
     }
   };
 
   (@ $ctx:tt [$($acc:tt)*] [$($m_acc:tt)*] $name:ident [$($tok:tt)*] #[$($m:tt)*] $($rest:tt)*) => {
     define_syntax_kind! {
-      @ $ctx [$($acc)* #[$($m)*] $name,] [$($m_acc)* [$($tok)*] => { $crate::SyntaxKind::$name };] $($rest)*
+      @ $ctx [$($acc)* #[$($m)*] $name,] [$($m_acc)* [$($tok)*] => { $crate::SyntaxKind::$name }; [$name] => { $crate::SyntaxKind::$name };] $($rest)*
     }
   };
 
@@ -108,6 +108,8 @@ define_syntax_kind! {
     IDENT                       /// Identifier
     NUMBER                      /// Literal number
     STRING                      /// Literal string
+    VERBATIM_STRING             /// Verbatim string literal
+    BLOCK_STRING                /// Block string literal
     WHITESPACE                  /// Whitespace
     COMMENT                     /// Comment
     SHEBANG                     [#!] /// `#!`
@@ -162,15 +164,22 @@ define_syntax_kind! {
     ARG_LIST                    /// Argument list
 
     // completion specs
-    FOR_COMP_SPEC               /// For spec (part of object/array composition)
-    IF_COMP_SPEC                /// If spec (part of object/array composition)
+    FOR_COMP_SPEC               /// For spec (part of object/array comprehension)
+    IF_COMP_SPEC                /// If spec (part of object/array comprehension)
+    COMP_SPEC_LIST              /// Comprehension spec list.
 
     // other nodes
     OBJCOMP_FIELD               /// ObjectComp field
     FUNCTION_BIND               /// Function binding
     VALUE_BIND                  /// Value binding
+    BIND_LIST                   /// Bind list
     PARAM_LIST                  /// Function parameter list
     PARAM                       /// Function parameter
+    COND                        /// Assert and if expression condition
+    ASSERT_MESSAGE              /// Assert expression error message
+    REST                        /// Rest expression (used in asserts, local, and others)
+    TRUE_BRANCH                 /// True branch of an if expression
+    FALSE_BRANCH                /// False branch of an if expression
     SOURCE_FILE                 /// Source file
 
     // special

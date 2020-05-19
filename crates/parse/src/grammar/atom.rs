@@ -30,6 +30,16 @@ pub(super) fn opt_literal_expr<S: TokenSource>(p: &mut Parser<S>) -> Option<Comp
       // "test"
       STRING => STRING_EXPR,
 
+      // test verbatim_string_expr
+      // @"test"
+      VERBATIM_STRING => STRING_EXPR,
+
+      // test block_string_expr
+      // |||
+      //   test
+      // |||
+      BLOCK_STRING => STRING_EXPR,
+
       // test null_expr
       // null
       T![null] => NULL_EXPR,
