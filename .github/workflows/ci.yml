@@ -28,6 +28,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
+          args: --all
 
   miri:
     name: Miri
@@ -52,4 +53,4 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: miri
-          args: test
+          args: test --all

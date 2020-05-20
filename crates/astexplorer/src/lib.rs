@@ -63,26 +63,3 @@ pub fn parse(source: &str) -> JsValue {
   let tree = source_file.tree();
   JsValue::from_serde(&DescriptionWrapper::Node(&tree)).unwrap()
 }
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-
-  #[test]
-  fn kitchen_sink() {
-    use jsonnet_syntax::ast::*;
-
-    let source_file = SourceFile::parse("local a = 5, b = a; a + b");
-    let tree = source_file.tree();
-    println!("{}", source_file.debug_dump());
-    let local = match tree.root().expect("root") {
-      Expr::Local(l) => l,
-      _ => panic!("expected local expr"),
-    };
-    let rest = local.rest().expect("rest");
-    let binds = local.binds().expect("binds").bindings().collect::<Vec<_>>();
-    assert_eq!(binds.len(), 2);
-    JsValue::from_serde(&DescriptionWrapper::Node(&tree)).unwrap();
-    panic!("err synth");
-  }
-}

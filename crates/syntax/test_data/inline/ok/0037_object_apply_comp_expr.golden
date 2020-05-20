@@ -1,0 +1,34 @@
+SOURCE_FILE@0..39
+  OBJECT_APPLY_EXPR@0..38
+    IDENT_EXPR@0..9
+      IDENT@0..9 "CCompiler"
+    WHITESPACE@9..10 " "
+    OBJECT_COMP_EXPR@10..38
+      L_CURLY@10..11 "{"
+      WHITESPACE@11..12 " "
+      VALUE_OBJ_FIELD@12..21
+        COMPUTED_FIELD_NAME@12..15
+          L_BRACK@12..13 "["
+          IDENT_EXPR@13..14
+            IDENT@13..14 "x"
+          R_BRACK@14..15 "]"
+        COLON_OP@15..16 ":"
+        WHITESPACE@16..17 " "
+        TRUE_EXPR@17..21
+          TRUE_KW@17..21 "true"
+      WHITESPACE@21..22 " "
+      FOR_COMP_SPEC@22..36
+        FOR_KW@22..25 "for"
+        WHITESPACE@25..26 " "
+        IDENT@26..27 "x"
+        WHITESPACE@27..28 " "
+        IN_KW@28..30 "in"
+        WHITESPACE@30..31 " "
+        ARRAY_EXPR@31..36
+          L_BRACK@31..32 "["
+          STRING_EXPR@32..35
+            STRING@32..35 "\'1\'"
+          R_BRACK@35..36 "]"
+      WHITESPACE@36..37 " "
+      R_CURLY@37..38 "}"
+  WHITESPACE@38..39 "\n"

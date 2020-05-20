@@ -287,6 +287,13 @@ fn trailer_helper<S: TokenSource>(p: &mut Parser<S>, mut e: CompletedMarker) -> 
       // test computed_member_expr
       // foo['bar']
       e = complete_member_computed_or_slice_expr(p, e);
+    } else if p.at(T!['{']) {
+      // test object_apply_expr
+      // CCompiler { compiler: "gcc" }
+
+      // test object_apply_comp_expr
+      // CCompiler { [x]: true for x in ['1'] }
+      e = complete_obj_or_comp_apply_expr(p, e);
     } else if p.at(T![in]) && p.nth_at(1, T![super]) {
       // test in_super_expr
       // 'foo' in super
@@ -381,6 +388,16 @@ fn complete_apply_expr<S: TokenSource>(p: &mut Parser<S>, e: CompletedMarker) ->
   let m = e.precede(p);
   args(p);
   m.complete(p, APPLY_EXPR)
+}
+
+fn complete_obj_or_comp_apply_expr<S: TokenSource>(
+  p: &mut Parser<S>,
+  e: CompletedMarker,
+) -> CompletedMarker {
+  assert!(p.at(T!['{']));
+  let m = e.precede(p);
+  obj_or_comp(p);
+  m.complete(p, OBJECT_APPLY_EXPR)
 }
 
 fn args<S: TokenSource>(p: &mut Parser<S>) -> CompletedMarker {
