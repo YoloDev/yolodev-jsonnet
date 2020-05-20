@@ -21,3 +21,8 @@ jsonnet-parse = { version = "0.1.0", path = "../parse" }
 test-case = "1"
 pretty_assertions = "0.6"
 test-gen = { version = "0.1", path = "../../build/test-gen" }
+
+[features]
+default = []
+
+node-description = []

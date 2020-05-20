@@ -31,6 +31,81 @@ macro_rules! ast_node_member {
   };
 }
 
+#[cfg(feature = "node-description")]
+struct DescriptionList<T: ast::AstDescribe + AstNode>(AstChildren<T>);
+
+#[cfg(feature = "node-description")]
+impl<T: ast::AstDescribe + AstNode + 'static> Iterator for DescriptionList<T> {
+  type Item = Box<dyn ast::AstDescribe>;
+
+  fn next(&mut self) -> Option<Self::Item> {
+    match self.0.next() {
+      None => None,
+      Some(n) => Some(Box::new(n)),
+    }
+  }
+}
+
+#[cfg(feature = "node-description")]
+macro_rules! ast_node_describe_members {
+  ($node:ident, $current:ident, $idx:expr, $name:ident,) => {};
+
+  ($node:ident, $current:ident, $idx:expr, $name:ident, [$fld:ident, $node_type:ident] $($rest:tt)*) => {
+    if *$current <= $idx {
+      *$current = $idx + 1;
+      if let Some(node) = $name::$fld($node) {
+        return Some((stringify!($fld), Some(ast::AstDescription::Node(Box::from(node)))));
+      } else {
+        return Some((stringify!($fld), None));
+      }
+    }
+
+    ast_node_describe_members! {
+      $node,
+      $current,
+      $idx + 1,
+      $name,
+      $($rest)*
+    }
+  };
+
+  ($node:ident, $current:ident, $idx:expr, $name:ident, [$fld:ident, [$node_type:ident]] $($rest:tt)*) => {
+    if *$current <= $idx {
+      *$current = $idx + 1;
+      let list = $name::$fld($node);
+      return Some((stringify!($fld), Some(ast::AstDescription::List(Box::from(DescriptionList(list))))));
+    }
+
+    ast_node_describe_members! {
+      $node,
+      $current,
+      $idx + 1,
+      $name,
+      $($rest)*
+    }
+  };
+
+  ($node:ident, $current:ident, $idx:expr, $name:ident, [$fld:ident, {$($tok:tt)*}] $($rest:tt)*) => {
+    ast_node_describe_members! {
+      $node,
+      $current,
+      $idx + 1,
+      $name,
+      $($rest)*
+    }
+  };
+
+  ($node:ident, $current:ident, $idx:expr, $name:ident, [$fld:ident, ( $( {$($tok:tt)*} )|+ )] $($rest:tt)*) => {
+    ast_node_describe_members! {
+      $node,
+      $current,
+      $idx + 1,
+      $name,
+      $($rest)*
+    }
+  };
+}
+
 macro_rules! ast_node {
   (
     $(#[$($m:tt)*])*
@@ -69,6 +144,48 @@ macro_rules! ast_node {
 
     impl ConcreteNode for $name {
       const SYNTAX_KIND: SyntaxKind = SyntaxKind::$kind;
+    }
+
+    #[cfg(feature = "node-description")]
+    impl ast::AstDescribe for $name {
+      fn describe_kind(&self) -> &str {
+        stringify!($name)
+      }
+
+      fn describe_span(&self) -> (u32, u32) {
+        let range = self.syntax.text_range();
+        (range.start().into(), range.end().into())
+      }
+
+      fn describe_children<'a>(&'a self) -> Box<dyn Iterator<Item = (&'static str, Option<ast::AstDescription>)> + 'a> {
+        struct DescribeChildren<'a>(&'a $name, u8);
+
+        impl<'a> Iterator for DescribeChildren<'a> {
+          type Item = (&'static str, Option<ast::AstDescription>);
+
+          fn next(&mut self) -> Option<Self::Item> {
+            #[allow(unused)]
+            let node = &self.0;
+
+            #[allow(unused)]
+            let current = &mut self.1;
+
+            ast_node_describe_members!{
+              node,
+              current,
+              0,
+              $name,
+              $(
+                [$fld, $t]
+              )*
+            }
+
+            None
+          }
+        }
+
+        Box::from(DescribeChildren(self, 0))
+      }
     }
   };
 }
@@ -115,6 +232,33 @@ macro_rules! ast_kind {
         match self {
           $(
             $name::$variant(it) => &it.syntax,
+          )*
+        }
+      }
+    }
+
+    #[cfg(feature = "node-description")]
+    impl ast::AstDescribe for $name {
+      fn describe_kind(&self) -> &str {
+        match self {
+          $(
+            $name::$variant(it) => ast::AstDescribe::describe_kind(it),
+          )*
+        }
+      }
+
+      fn describe_span(&self) -> (u32, u32) {
+        match self {
+          $(
+            $name::$variant(it) => ast::AstDescribe::describe_span(it),
+          )*
+        }
+      }
+
+      fn describe_children<'a>(&'a self) -> Box<dyn Iterator<Item = (&'static str, Option<ast::AstDescription>)> + 'a> {
+        match self {
+          $(
+            $name::$variant(it) => ast::AstDescribe::describe_children(it),
           )*
         }
       }
