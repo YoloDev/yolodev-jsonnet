@@ -29,28 +29,25 @@ jobs:
         with:
           command: test
           args: --all
-
-  miri:
-    name: Miri
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Install latest nightly
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          profile: minimal
-          override: true
-          components: miri
-
-      - name: Setup miri
-        uses: actions-rs/cargo@v1
-        with:
-          command: miri
-          args: setup
-
-      - name: Run tests with miri
-        uses: actions-rs/cargo@v1
-        with:
-          command: miri
-          args: test --all
+  # miri:
+  #   name: Miri
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - name: Install latest nightly
+  #       uses: actions-rs/toolchain@v1
+  #       with:
+  #         toolchain: nightly
+  #         profile: minimal
+  #         override: true
+  #         components: miri
+  #     - name: Setup miri
+  #       uses: actions-rs/cargo@v1
+  #       with:
+  #         command: miri
+  #         args: setup
+  #     - name: Run tests with miri
+  #       uses: actions-rs/cargo@v1
+  #       with:
+  #         command: miri
+  #         args: test --all
