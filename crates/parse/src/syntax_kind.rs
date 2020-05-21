@@ -180,6 +180,9 @@ define_syntax_kind! {
     REST                        /// Rest expression (used in asserts, local, and others)
     TRUE_BRANCH                 /// True branch of an if expression
     FALSE_BRANCH                /// False branch of an if expression
+    SLICE_FROM                  /// From part in a slice expression
+    SLICE_TO                    /// To part in a slice expression
+    SLICE_STEP                  /// Step part in a slice expression
     SOURCE_FILE                 /// Source file
 
     // special

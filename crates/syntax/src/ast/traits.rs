@@ -19,19 +19,3 @@ use crate::ast::{AstNode, AstToken};
 //     support::child(self.syntax())
 //   }
 // }
-
-#[cfg(feature = "node-description")]
-pub enum AstDescription {
-  Node(Box<dyn AstDescribe>),
-  Token(Box<dyn AstDescribe>),
-  List(Box<dyn Iterator<Item = Box<dyn AstDescribe>>>),
-}
-
-#[cfg(feature = "node-description")]
-pub trait AstDescribe {
-  fn describe_span(&self) -> (u32, u32);
-  fn describe_kind(&self) -> &str;
-  fn describe_children<'a>(
-    &'a self,
-  ) -> Box<dyn Iterator<Item = (&'static str, Option<AstDescription>)> + 'a>;
-}

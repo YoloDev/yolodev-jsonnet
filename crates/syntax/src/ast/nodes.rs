@@ -1,5 +1,5 @@
 use crate::{
-  ast::{self, support, AstChildren, AstNode},
+  ast::{support, AstChildren, AstNode, AstToken, Ident, Number, String},
   SyntaxKind, SyntaxNode, SyntaxToken, T,
 };
 
@@ -29,80 +29,17 @@ macro_rules! ast_node_member {
       $(T![$($tok)*],)*
     ]) }
   };
-}
 
-#[cfg(feature = "node-description")]
-struct DescriptionList<T: ast::AstDescribe + AstNode>(AstChildren<T>);
-
-#[cfg(feature = "node-description")]
-impl<T: ast::AstDescribe + AstNode + 'static> Iterator for DescriptionList<T> {
-  type Item = Box<dyn ast::AstDescribe>;
-
-  fn next(&mut self) -> Option<Self::Item> {
-    match self.0.next() {
-      None => None,
-      Some(n) => Some(Box::new(n)),
-    }
-  }
-}
-
-#[cfg(feature = "node-description")]
-macro_rules! ast_node_describe_members {
-  ($node:ident, $current:ident, $idx:expr, $name:ident,) => {};
-
-  ($node:ident, $current:ident, $idx:expr, $name:ident, [$fld:ident, $node_type:ident] $($rest:tt)*) => {
-    if *$current <= $idx {
-      *$current = $idx + 1;
-      if let Some(node) = $name::$fld($node) {
-        return Some((stringify!($fld), Some(ast::AstDescription::Node(Box::from(node)))));
-      } else {
-        return Some((stringify!($fld), None));
-      }
-    }
-
-    ast_node_describe_members! {
-      $node,
-      $current,
-      $idx + 1,
-      $name,
-      $($rest)*
-    }
+  ($name:ident, $(#[$($m:tt)*])* $fld:ident, ( $ast_token:ident )) => {
+    $(#[$($m)*])*
+    pub fn $fld(&self) -> Option<$ast_token> { support::token_kind(&self.syntax) }
   };
 
-  ($node:ident, $current:ident, $idx:expr, $name:ident, [$fld:ident, [$node_type:ident]] $($rest:tt)*) => {
-    if *$current <= $idx {
-      *$current = $idx + 1;
-      let list = $name::$fld($node);
-      return Some((stringify!($fld), Some(ast::AstDescription::List(Box::from(DescriptionList(list))))));
-    }
-
-    ast_node_describe_members! {
-      $node,
-      $current,
-      $idx + 1,
-      $name,
-      $($rest)*
-    }
-  };
-
-  ($node:ident, $current:ident, $idx:expr, $name:ident, [$fld:ident, {$($tok:tt)*}] $($rest:tt)*) => {
-    ast_node_describe_members! {
-      $node,
-      $current,
-      $idx + 1,
-      $name,
-      $($rest)*
-    }
-  };
-
-  ($node:ident, $current:ident, $idx:expr, $name:ident, [$fld:ident, ( $( {$($tok:tt)*} )|+ )] $($rest:tt)*) => {
-    ast_node_describe_members! {
-      $node,
-      $current,
-      $idx + 1,
-      $name,
-      $($rest)*
-    }
+  ($name:ident, $(#[$($m:tt)*])* $fld:ident, ( $( $syntax:ident ).+ => $node:ident )) => {
+    $(#[$($m)*])*
+    pub fn $fld(&self) -> Option<$node> { support::nested_child(&self.syntax, &[
+      $(SyntaxKind::$syntax,)*
+    ]) }
   };
 }
 
@@ -144,48 +81,6 @@ macro_rules! ast_node {
 
     impl ConcreteNode for $name {
       const SYNTAX_KIND: SyntaxKind = SyntaxKind::$kind;
-    }
-
-    #[cfg(feature = "node-description")]
-    impl ast::AstDescribe for $name {
-      fn describe_kind(&self) -> &str {
-        stringify!($name)
-      }
-
-      fn describe_span(&self) -> (u32, u32) {
-        let range = self.syntax.text_range();
-        (range.start().into(), range.end().into())
-      }
-
-      fn describe_children<'a>(&'a self) -> Box<dyn Iterator<Item = (&'static str, Option<ast::AstDescription>)> + 'a> {
-        struct DescribeChildren<'a>(&'a $name, u8);
-
-        impl<'a> Iterator for DescribeChildren<'a> {
-          type Item = (&'static str, Option<ast::AstDescription>);
-
-          fn next(&mut self) -> Option<Self::Item> {
-            #[allow(unused)]
-            let node = &self.0;
-
-            #[allow(unused)]
-            let current = &mut self.1;
-
-            ast_node_describe_members!{
-              node,
-              current,
-              0,
-              $name,
-              $(
-                [$fld, $t]
-              )*
-            }
-
-            None
-          }
-        }
-
-        Box::from(DescribeChildren(self, 0))
-      }
     }
   };
 }
@@ -236,29 +131,57 @@ macro_rules! ast_kind {
         }
       }
     }
+  };
+}
 
-    #[cfg(feature = "node-description")]
-    impl ast::AstDescribe for $name {
-      fn describe_kind(&self) -> &str {
-        match self {
+macro_rules! op_kind {
+  (
+    $(#[$($m:tt)*])*
+    pub enum $name:ident {
+      $(
+        $(#[$($variant_m:tt)*])*
+        $variant:ident($($tok:tt)*),
+      )*
+    }
+  ) => {
+    $(#[$($m)*])*
+    #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+    pub enum $name {
+      $(
+        $(#[$($variant_m)*])*
+        $variant(SyntaxToken),
+      )*
+    }
+
+    impl AstToken for $name {
+      fn can_cast(token: SyntaxKind) -> bool
+      where
+        Self: Sized
+      {
+        match token {
           $(
-            $name::$variant(it) => ast::AstDescribe::describe_kind(it),
+            T![$($tok)*] => true,
           )*
+          _ => false,
         }
       }
 
-      fn describe_span(&self) -> (u32, u32) {
-        match self {
+      fn cast(syntax: SyntaxToken) -> Option<Self>
+      where
+        Self: Sized
+      {
+        match syntax.kind() {
           $(
-            $name::$variant(it) => ast::AstDescribe::describe_span(it),
+            T![$($tok)*] => Some($name::$variant(syntax)),
           )*
+          _ => None,
         }
       }
 
-      fn describe_children<'a>(&'a self) -> Box<dyn Iterator<Item = (&'static str, Option<ast::AstDescription>)> + 'a> {
+      fn syntax(&self) -> &SyntaxToken {
         match self {
           $(
-            $name::$variant(it) => ast::AstDescribe::describe_children(it),
+            $name::$variant(s) => s,
           )*
         }
       }
@@ -274,13 +197,6 @@ ast_node! {
 }
 
 ast_node! {
-  /// The remainder on a statement-like expression.
-  pub struct Rest(REST) {
-    expr: Expr,
-  }
-}
-
-ast_node! {
   /// An error expressions: `error "foo"`.
   pub struct ErrorExpr(ERROR_EXPR) {
     error_token: {error},
@@ -291,7 +207,7 @@ ast_node! {
 ast_node! {
   /// A string expression: `"foo"`.
   pub struct StringExpr(STRING_EXPR) {
-    token: ( {STRING} | {VERBATIM_STRING} | {BLOCK_STRING} ),
+    token: (String),
   }
 }
 
@@ -299,25 +215,11 @@ ast_node! {
   /// An assert expression: `assert "foo" : "message" ; <rest>`.
   pub struct AssertExpr(ASSERT_EXPR) {
     assert_token: {assert},
-    cond: Cond,
+    cond: (COND => Expr),
     colon_token: {:},
-    message: AssertMessage,
+    message: (ASSERT_MESSAGE => Expr),
     semicolon_token: {;},
-    rest: Rest,
-  }
-}
-
-ast_node! {
-  /// The condition part of an assert expression or member.
-  pub struct Cond(COND) {
-    expr: Expr,
-  }
-}
-
-ast_node! {
-  /// The message part of an assert expression or member.
-  pub struct AssertMessage(ASSERT_MESSAGE) {
-    expr: Expr,
+    rest: (REST => Expr),
   }
 }
 
@@ -325,25 +227,11 @@ ast_node! {
   /// An if expression.
   pub struct IfExpr(IF_EXPR) {
     if_token: {if},
-    cond: Cond,
+    cond: (COND => Expr),
     then_token: {then},
-    true_branch: TrueBranch,
+    true_branch: (TRUE_BRANCH => Expr),
     else_token: {else},
-    false_branch: FalseBranch,
-  }
-}
-
-ast_node! {
-  /// The true branch in an if expression.
-  pub struct TrueBranch(TRUE_BRANCH) {
-    expr: Expr,
-  }
-}
-
-ast_node! {
-  /// The true branch in an if expression.
-  pub struct FalseBranch(FALSE_BRANCH) {
-    expr: Expr,
+    false_branch: (FALSE_BRANCH => Expr),
   }
 }
 
@@ -368,7 +256,7 @@ ast_node! {
 ast_node! {
   /// Function parameter.
   pub struct Param(PARAM) {
-    name: {IDENT},
+    name: (Ident),
     assign_token: {=},
     default_value: Expr,
   }
@@ -384,7 +272,7 @@ ast_node! {
 ast_node! {
   /// Named argument.
   pub struct NamedArg(NAMED_ARGUMENT) {
-    name: {IDENT},
+    name: (Ident),
     assign_token: {=},
     expr: Expr,
   }
@@ -402,23 +290,23 @@ ast_node! {
   /// Object field assert.
   pub struct AssertObjField(ASSERT_OBJ_FIELD) {
     assert_token: {assert},
-    cond: Cond,
+    cond: (COND => Expr),
     colon_token: {:},
-    message: AssertMessage,
+    message: (ASSERT_MESSAGE => Expr),
   }
 }
 
 ast_node! {
   /// Object ident field name.
   pub struct IdentFieldName(IDENT_FIELD_NAME) {
-    name: {IDENT},
+    name: (Ident),
   }
 }
 
 ast_node! {
   /// Object string field name.
   pub struct StringFieldName(STRING_FIELD_NAME) {
-    name: ( {STRING} | {VERBATIM_STRING} | {BLOCK_STRING} ),
+    name: (String),
   }
 }
 
@@ -440,11 +328,23 @@ ast_kind! {
   }
 }
 
+op_kind! {
+  /// Object field assignment operator
+  pub enum ObjectFieldAssignmentOp {
+    Default(:),
+    Hidden(::),
+    Visible(:::),
+    MergeDefault(+:),
+    MergeHidden(+::),
+    MergeVisible(+:::),
+  }
+}
+
 ast_node! {
   /// Object field value.
   pub struct ValueObjField(VALUE_OBJ_FIELD) {
     name: ObjectFieldName,
-    op: ( {:} | {::} | {:::} | {+:} | {+::} | {+:::} ),
+    op: (ObjectFieldAssignmentOp),
     expr: Expr,
   }
 }
@@ -454,7 +354,7 @@ ast_node! {
   pub struct FunctionObjField(FUNCTION_OBJ_FIELD) {
     name: ObjectFieldName,
     params: ParamList,
-    op: ( {:} | {::} | {:::} | {+:} | {+::} | {+:::} ),
+    op: (ObjectFieldAssignmentOp),
     expr: Expr,
   }
 }
@@ -480,7 +380,7 @@ ast_kind! {
 ast_node! {
   /// Value binding.
   pub struct ValueBind(VALUE_BIND) {
-    name: {IDENT},
+    name: (Ident),
     assign_token: {=},
     expr: Expr,
   }
@@ -489,7 +389,7 @@ ast_node! {
 ast_node! {
   /// Function binding.
   pub struct FunctionBind(FUNCTION_BIND) {
-    name: {IDENT},
+    name: (Ident),
     params: ParamList,
     assign_token: {=},
     expr: Expr,
@@ -508,7 +408,8 @@ ast_node! {
   /// Import expression.
   pub struct ImportExpr(IMPORT_EXPR) {
     import_token: {import},
-    value: ( {STRING} | {VERBATIM_STRING} ),
+    // TODO: Different token type? (block_string not allowed here)
+    value: (String),
   }
 }
 
@@ -516,7 +417,8 @@ ast_node! {
   /// Importstr expression.
   pub struct ImportStrExpr(IMPORTSTR_EXPR) {
     importstr_token: {importstr},
-    value: ( {STRING} | {VERBATIM_STRING} ),
+    // TODO: Different token type? (block_string not allowed here)
+    value: (String),
   }
 }
 
@@ -526,7 +428,7 @@ ast_node! {
     local_token: {local},
     binds: BindList,
     semicolon_token: {;},
-    rest: Rest,
+    rest: (REST => Expr),
   }
 }
 
@@ -537,11 +439,46 @@ ast_node! {
   }
 }
 
+op_kind! {
+  /// Unary operator
+  pub enum UnaryOp {
+    Plus(+),
+    Minus(-),
+    Not(!),
+    BitNeg(~),
+  }
+}
+
 ast_node! {
   /// An unary expression.
   pub struct UnaryExpr(UNARY_EXPR) {
-    op: ( {+} | {-} | {!} | {~} ),
+    op: (UnaryOp),
     expr: Expr,
+  }
+}
+
+op_kind! {
+  /// Unary operator
+  pub enum BinaryOp {
+    Mult(*),
+    Div(/),
+    Mod(%),
+    Plus(+),
+    Minus(-),
+    ShiftL(<<),
+    ShiftR(>>),
+    GreaterThan(>),
+    GreaterThanOrEquals(>=),
+    LessThan(<),
+    LessThanOrEquals(<=),
+    In(in),
+    Equals(==),
+    NotEquals(!=),
+    BitAnd(&),
+    BitXor(^),
+    BitOr(|),
+    And(&&),
+    Or(||),
   }
 }
 
@@ -549,7 +486,17 @@ ast_node! {
   // TODO: this one probably needs some manual impls to get lhs & rhs
   /// A binary expression.
   pub struct BinaryExpr(BINARY_EXPR) {
-    op: ( {*} | {/} | {%} | {+} | {-} | {<<} | {>>} | {>} | {>=} | {<} | {<=} | {in} | {==} | {!=} | {&} | {^} | {|} | {&&} | {||} ),
+    op: (BinaryOp),
+  }
+}
+
+impl BinaryExpr {
+  pub fn lhs(&self) -> Option<Expr> {
+    support::children(&self.syntax).next()
+  }
+
+  pub fn rhs(&self) -> Option<Expr> {
+    support::children(&self.syntax).nth(1)
   }
 }
 
@@ -563,7 +510,6 @@ ast_node! {
 }
 
 ast_node! {
-  // TODO: this one probably needs some manual impls to get the slice expressions
   /// A computed field access expression.
   pub struct ComputedFieldAccessExpr(COMPUTED_FIELD_ACCESS_EXPR) {
     l_brack_token: {'['},
@@ -571,19 +517,29 @@ ast_node! {
   }
 }
 
-ast_node! {
-  // TODO: this one probably needs some manual impls to get the slice expressions
-  /// A identifier field access expression.
-  pub struct IdentFieldAccessExpr(IDENT_FIELD_ACCESS_EXPR) {
-    dot_token: {.},
-    field_name: {IDENT},
+impl ComputedFieldAccessExpr {
+  pub fn target(&self) -> Option<Expr> {
+    support::children(&self.syntax).next()
+  }
+
+  pub fn expr(&self) -> Option<Expr> {
+    support::children(&self.syntax).nth(1)
   }
 }
 
 ast_node! {
-  // TODO: this one probably needs some manual impls to get the slice expressions
+  /// A identifier field access expression.
+  pub struct IdentFieldAccessExpr(IDENT_FIELD_ACCESS_EXPR) {
+    target: Expr,
+    dot_token: {.},
+    field_name: (Ident),
+  }
+}
+
+ast_node! {
   /// An apply expression.
   pub struct ApplyExpr(APPLY_EXPR) {
+    target: Expr,
     args: ArgList,
     tailstrict_token: {tailstrict},
   }
@@ -599,9 +555,19 @@ ast_node! {
 }
 
 ast_node! {
-  // TODO: this one probably needs some manual impls to get the slice expressions
   /// Object apply expression.
   pub struct ObjApplyExpr(OBJECT_APPLY_EXPR) {}
+}
+
+impl ObjApplyExpr {
+  pub fn target(&self) -> Option<Expr> {
+    support::children(&self.syntax).next()
+  }
+
+  // TODO: This should not be Expr, but a subset of Exprs
+  pub fn expr(&self) -> Option<Expr> {
+    support::children(&self.syntax).nth(1)
+  }
 }
 
 ast_node! {
@@ -660,14 +626,14 @@ ast_node! {
 ast_node! {
   /// Number expression.
   pub struct NumberExpr(NUMBER_EXPR) {
-    number_token: {NUMBER},
+    number_token: (Number),
   }
 }
 
 ast_node! {
   /// Ident expression.
   pub struct IdentExpr(IDENT_EXPR) {
-    ident_token: {IDENT},
+    ident_token: (Ident),
   }
 }
 
@@ -676,6 +642,7 @@ ast_node! {
   pub struct SuperFieldExpr(SUPER_FIELD_EXPR) {
     super_token: {super},
     dot_token: {.},
+    field_name: (Ident),
   }
 }
 
@@ -684,6 +651,7 @@ ast_node! {
   pub struct SuperComputedExpr(SUPER_COMPUTED_EXPR) {
     super_token: {super},
     l_brack_token: {'['},
+    expr: Expr,
     r_brack_token: {']'},
   }
 }
@@ -701,7 +669,7 @@ ast_node! {
   /// For spec.
   pub struct ForCompSpec(FOR_COMP_SPEC) {
     for_token: {for},
-    id: {IDENT},
+    id: (Ident),
     in_token: {in},
     expr: Expr,
   }
@@ -734,7 +702,7 @@ ast_node! {
   /// Array comprehension expression.
   pub struct ArrayCompExpr(ARRAY_COMP_EXPR) {
     l_brack_token: {'['},
-    // TODO: expr here needs to be nested in a named group
+    expr: Expr,
     comma_token: {,},
     specs: CompSpecList,
     r_brack_token: {']'},

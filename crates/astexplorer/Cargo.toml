@@ -1,7 +1,8 @@
 [package]
 name = "jsonnet-astexplorer"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Aleksander Heintz <alxandr@alxandr.me>"]
+repository = "https://github.com/YoloDev/yolodev-jsonnet/"
 edition = "2018"
 
 [lib]
@@ -13,5 +14,5 @@ crate-type = ["cdylib", "rlib"]
 serde = { version = "1", features = ["derive"] }
 wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
 
-jsonnet-syntax = { version = "0.1.0", path = "../syntax", features = ["node-description"] }
+jsonnet-syntax = { version = "0.1.0", path = "../syntax" }
 

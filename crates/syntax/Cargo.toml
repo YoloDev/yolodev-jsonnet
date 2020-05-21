@@ -25,4 +25,3 @@ test-gen = { version = "0.1", path = "../../build/test-gen" }
 [features]
 default = []
 
-node-description = []

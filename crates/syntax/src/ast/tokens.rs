@@ -41,10 +41,14 @@ macro_rules! define_token {
 
 define_token!(Whitespace, WHITESPACE);
 define_token!(Comment, COMMENT);
-define_token!(String, STRING);
-define_token!(VerbatimString, VERBATIM_STRING);
-define_token!(BlockString, BLOCK_STRING);
-//define_token!(Number, NUMBER);
+define_token!(Ident, IDENT);
+define_token!(Number, NUMBER);
+
+impl Ident {
+  pub fn name(&self) -> &str {
+    self.syntax.text().as_ref()
+  }
+}
 
 impl Comment {
   pub fn kind(&self) -> CommentKind {
@@ -104,6 +108,58 @@ impl Whitespace {
     text
       .find('\n')
       .map_or(false, |idx| text[idx + 1..].contains('\n'))
+  }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum StringKind {
+  Normal,
+  Verbatim,
+  Block,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct String {
+  pub(crate) syntax: SyntaxToken,
+}
+
+impl core::fmt::Display for String {
+  fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    core::fmt::Display::fmt(&self.syntax, f)
+  }
+}
+
+impl AstToken for String {
+  fn can_cast(kind: SyntaxKind) -> bool {
+    match kind {
+      STRING => true,
+      VERBATIM_STRING => true,
+      BLOCK_STRING => true,
+      _ => false,
+    }
+  }
+
+  fn cast(syntax: SyntaxToken) -> Option<Self> {
+    if Self::can_cast(syntax.kind()) {
+      Some(Self { syntax })
+    } else {
+      None
+    }
+  }
+
+  fn syntax(&self) -> &SyntaxToken {
+    &self.syntax
+  }
+}
+
+impl String {
+  pub fn string_kind(&self) -> StringKind {
+    match self.syntax.kind() {
+      STRING => StringKind::Normal,
+      VERBATIM_STRING => StringKind::Verbatim,
+      BLOCK_STRING => StringKind::Block,
+      _ => unreachable!(),
+    }
   }
 }
 
@@ -177,61 +233,35 @@ impl QuoteOffsets {
   }
 }
 
-pub trait HasQuotes: AstToken {
-  fn quote_offsets(&self) -> Option<QuoteOffsets>;
+impl String {
+  pub fn quote_offsets(&self) -> Option<QuoteOffsets> {
+    let text = self.text().as_str();
+    let offsets = match self.string_kind() {
+      StringKind::Normal => QuoteOffsets::from_single_char_quote(text),
+      StringKind::Verbatim => QuoteOffsets::from_single_char_quote(text),
+      StringKind::Block => QuoteOffsets::from_multi_char_quote(text),
+    }?;
+    let o = self.syntax().text_range().start();
+    let offsets = QuoteOffsets {
+      quotes: [offsets.quotes[0] + o, offsets.quotes[1] + o],
+      contents: offsets.contents + o,
+    };
+    Some(offsets)
+  }
 
-  fn open_quote_text_range(&self) -> Option<TextRange> {
+  pub fn open_quote_text_range(&self) -> Option<TextRange> {
     self.quote_offsets().map(|it| it.quotes[0])
   }
 
-  fn close_quote_text_range(&self) -> Option<TextRange> {
+  pub fn close_quote_text_range(&self) -> Option<TextRange> {
     self.quote_offsets().map(|it| it.quotes[1])
   }
 
-  fn text_range_between_quotes(&self) -> Option<TextRange> {
+  pub fn text_range_between_quotes(&self) -> Option<TextRange> {
     self.quote_offsets().map(|it| it.contents)
   }
-}
 
-macro_rules! impl_has_quotes {
-  (@impl $name:ident $f:ident) => {
-    impl HasQuotes for $name {
-      fn quote_offsets(&self) -> Option<QuoteOffsets> {
-        let text = self.text().as_str();
-        let offsets = QuoteOffsets::$f(text)?;
-        let o = self.syntax().text_range().start();
-        let offsets = QuoteOffsets {
-          quotes: [offsets.quotes[0] + o, offsets.quotes[1] + o],
-          contents: offsets.contents + o,
-        };
-        Some(offsets)
-      }
-    }
-  };
-
-  ($name:ident single) => {
-    impl_has_quotes! {
-      @impl $name from_single_char_quote
-    }
-  };
-
-  ($name:ident multi) => {
-    impl_has_quotes! {
-      @impl $name from_multi_char_quote
-    }
-  };
-}
-
-impl_has_quotes!(String single);
-impl_has_quotes!(VerbatimString single);
-impl_has_quotes!(BlockString multi);
-
-pub trait HasStringValue: HasQuotes {
-  fn value(&self) -> Option<Cow<str>>;
-}
-
-impl HasStringValue for String {
-  fn value(&self) -> Option<Cow<str>> {
+  fn normal_value(&self) -> Option<Cow<str>> {
     use jsonnet_lex::unescape::*;
 
     let text = self.text().as_str();
@@ -258,10 +288,8 @@ impl HasStringValue for String {
       Some(Cow::owned(buf))
     }
   }
-}
 
-impl HasStringValue for VerbatimString {
-  fn value(&self) -> Option<Cow<str>> {
+  fn verbatim_value(&self) -> Option<Cow<str>> {
     use jsonnet_lex::unescape::*;
 
     let text = self.text().as_str();
@@ -292,10 +320,8 @@ impl HasStringValue for VerbatimString {
       Some(Cow::owned(buf))
     }
   }
-}
 
-impl HasStringValue for BlockString {
-  fn value(&self) -> Option<Cow<str>> {
+  fn block_value(&self) -> Option<Cow<str>> {
     use jsonnet_lex::unescape::*;
 
     let text = self.text().as_str();
@@ -320,6 +346,14 @@ impl HasStringValue for BlockString {
       None
     } else {
       Some(Cow::owned(buf))
+    }
+  }
+
+  pub fn value(&self) -> Option<Cow<str>> {
+    match self.string_kind() {
+      StringKind::Normal => self.normal_value(),
+      StringKind::Verbatim => self.verbatim_value(),
+      StringKind::Block => self.block_value(),
     }
   }
 }

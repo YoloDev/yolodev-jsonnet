@@ -1,59 +1,8 @@
-use jsonnet_syntax::{ast::AstDescribe, ast::AstDescription, SourceFile};
-use serde::ser::*;
+mod describe;
+
+use crate::describe::DescribeExt;
+use jsonnet_syntax::SourceFile;
 use wasm_bindgen::prelude::*;
-
-enum DescriptionWrapper<'a> {
-  Node(&'a dyn AstDescribe),
-  List(Vec<Box<dyn AstDescribe>>),
-}
-
-impl<'a> Serialize for DescriptionWrapper<'a> {
-  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-  where
-    S: serde::Serializer,
-  {
-    match self {
-      DescriptionWrapper::Node(n) => serialize_node(*n, serializer),
-      DescriptionWrapper::List(l) => serialize_list(l, serializer),
-      //AstDescription::Token(_) => todo!(),
-    }
-  }
-}
-
-fn serialize_node<S>(node: &dyn AstDescribe, serializer: S) -> Result<S::Ok, S::Error>
-where
-  S: serde::Serializer,
-{
-  let children = node.describe_children().collect::<Vec<_>>();
-  let mut s = serializer.serialize_struct("node", children.len() + 2)?;
-  s.serialize_field("type", node.describe_kind())?;
-  s.serialize_field("span", &node.describe_span())?;
-  for (child_name, child) in children {
-    match child {
-      None => s.serialize_field(child_name, &()),
-      Some(AstDescription::Node(n)) => {
-        s.serialize_field(child_name, &DescriptionWrapper::Node(n.as_ref()))
-      }
-      Some(AstDescription::List(l)) => {
-        s.serialize_field(child_name, &DescriptionWrapper::List(l.collect()))
-      }
-      Some(AstDescription::Token(_)) => todo!(),
-    }?;
-  }
-  s.end()
-}
-
-fn serialize_list<S>(list: &Vec<Box<dyn AstDescribe>>, serializer: S) -> Result<S::Ok, S::Error>
-where
-  S: serde::Serializer,
-{
-  let mut s = serializer.serialize_seq(Some(list.len()))?;
-  for item in list {
-    s.serialize_element(&DescriptionWrapper::Node(item.as_ref()))?;
-  }
-
-  s.end()
-}
 
 #[wasm_bindgen]
 pub fn parse(source: &str) -> JsValue {
@@ -61,5 +10,16 @@ pub fn parse(source: &str) -> JsValue {
 
   // TODO: Deal with errors somehow
   let tree = source_file.tree();
-  JsValue::from_serde(&DescriptionWrapper::Node(&tree)).unwrap()
+  JsValue::from_serde(&tree.describe()).unwrap()
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn test_name() {
+    let src = r#"local a = 5, b = a + 2, c = "foo", d = "bar\\tbaz"; a + b"#;
+    parse(src);
+  }
 }

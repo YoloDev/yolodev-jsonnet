@@ -340,6 +340,7 @@ fn complete_member_computed_or_slice_expr<S: TokenSource>(
   let mut count = 0u8;
   let mut ready_for_expr = true;
 
+  // TODO: Produce SLICE_START, SLICE_END and SLICE_STEP nodes
   while !p.at(EOF) && !p.at(T![']']) {
     if p.eat(T![:]) {
       if count > 1 {
@@ -387,6 +388,7 @@ fn complete_apply_expr<S: TokenSource>(p: &mut Parser<S>, e: CompletedMarker) ->
   assert!(p.at(T!['(']));
   let m = e.precede(p);
   args(p);
+  p.eat(T![tailstrict]);
   m.complete(p, APPLY_EXPR)
 }
 

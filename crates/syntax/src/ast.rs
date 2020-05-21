@@ -69,7 +69,7 @@ impl<N: AstNode> Iterator for AstChildren<N> {
 }
 
 mod support {
-  use super::{AstChildren, AstNode, SyntaxKind, SyntaxNode, SyntaxToken};
+  use super::{AstChildren, AstNode, AstToken, SyntaxKind, SyntaxNode, SyntaxToken};
 
   pub(super) fn child<N: AstNode>(parent: &SyntaxNode) -> Option<N> {
     parent.children().find_map(N::cast)
@@ -91,6 +91,25 @@ mod support {
       .children_with_tokens()
       .filter_map(|it| it.into_token())
       .find(|it| kinds.contains(&it.kind()))
+  }
+
+  pub(super) fn token_kind<T: AstToken>(parent: &SyntaxNode) -> Option<T> {
+    parent
+      .children_with_tokens()
+      .filter_map(|it| it.into_token())
+      .find_map(T::cast)
+  }
+
+  pub(super) fn nested_child<N: AstNode>(parent: &SyntaxNode, path: &[SyntaxKind]) -> Option<N> {
+    let mut current = parent.clone();
+    for item in path.iter().copied() {
+      match current.children().find(|c| c.kind() == item) {
+        None => return None,
+        Some(n) => current = n,
+      }
+    }
+
+    child(&current)
   }
 }
 
