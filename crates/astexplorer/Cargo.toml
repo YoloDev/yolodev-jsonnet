@@ -1,6 +1,6 @@
 [package]
 name = "jsonnet-astexplorer"
-version = "0.1.2"
+version = "0.1.4"
 authors = ["Aleksander Heintz <alxandr@alxandr.me>"]
 repository = "https://github.com/YoloDev/yolodev-jsonnet/"
 edition = "2018"

@@ -20,22 +20,28 @@ ARG COMMON_SCRIPT_SHA="dev-mode"
 
 # Configure apt and install packages
 RUN apt-get update \
-    && export DEBIAN_FRONTEND=noninteractive \
-    #
-    # Verify git, common tools / libs installed, add/modify non-root user, optionally install zsh
-    && apt-get -y install --no-install-recommends curl ca-certificates 2>&1 \
-    && curl -sSL  ${COMMON_SCRIPT_SOURCE} -o /tmp/common-setup.sh \
-    && ([ "${COMMON_SCRIPT_SHA}" = "dev-mode" ] || (echo "${COMMON_SCRIPT_SHA} */tmp/common-setup.sh" | sha256sum -c -)) \
-    && /bin/bash /tmp/common-setup.sh "${INSTALL_ZSH}" "${USERNAME}" "${USER_UID}" "${USER_GID}" "${UPGRADE_PACKAGES}" \
-    && rm /tmp/common-setup.sh \
-    #
-    # Rust specific
-    && apt-get -y install lldb python3-minimal libpython3.7 \
-    #
-    # Clean up
-    && apt-get autoremove -y \
-    && apt-get clean -y \
-    && rm -rf /var/lib/apt/lists/*
+  && export DEBIAN_FRONTEND=noninteractive \
+  #
+  # Verify git, common tools / libs installed, add/modify non-root user, optionally install zsh
+  && apt-get -y install --no-install-recommends curl ca-certificates 2>&1 \
+  && curl -sSL  ${COMMON_SCRIPT_SOURCE} -o /tmp/common-setup.sh \
+  && ([ "${COMMON_SCRIPT_SHA}" = "dev-mode" ] || (echo "${COMMON_SCRIPT_SHA} */tmp/common-setup.sh" | sha256sum -c -)) \
+  && /bin/bash /tmp/common-setup.sh "${INSTALL_ZSH}" "${USERNAME}" "${USER_UID}" "${USER_GID}" "${UPGRADE_PACKAGES}" \
+  && rm /tmp/common-setup.sh \
+  #
+  # Rust specific
+  && apt-get -y install lldb python3-minimal libpython3.7 \
+  #
+  # Personal preference - probably not the place to put these, but oh whell
+  && apt-get -y install fish \
+  && curl -fsSL https://starship.rs/install.sh | bash -s -- -y \
+  && mkdir -p "/home/${USERNAME}/.config/fish" \
+  && echo "starship init fish | source" > "/home/${USERNAME}/.config/fish/config.fish" \
+  #
+  # Clean up
+  && apt-get autoremove -y \
+  && apt-get clean -y \
+  && rm -rf /var/lib/apt/lists/*
 
 USER ${USERNAME}
 

@@ -406,8 +406,11 @@ impl_node! {
 }
 
 impl_node! {
-  fn SliceExpr(n, s, 2) {
+  fn SliceExpr(n, s, 5) {
     s.serialize_field("l_brack_token", &n.l_brack_token().describe())?;
+    s.serialize_field("from_expr", &n.from_expr().describe())?;
+    s.serialize_field("to_expr", &n.to_expr().describe())?;
+    s.serialize_field("step_expr", &n.step_expr().describe())?;
     s.serialize_field("r_brack_token", &n.r_brack_token().describe())?;
   }
 }

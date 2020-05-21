@@ -264,26 +264,26 @@ impl CompletedMarker {
     new_pos
   }
 
-  // /// Undo this completion and turns into a `Marker`
-  // pub(crate) fn undo_completion<S: TokenSource>(self, p: &mut Parser<S>) -> Marker {
-  //   let start_idx = self.start_pos as usize;
-  //   let finish_idx = self.finish_pos as usize;
+  /// Undo this completion and turns into a `Marker`
+  pub(crate) fn undo_completion<S: TokenSource>(self, p: &mut Parser<S>) -> Marker {
+    let start_idx = self.start_pos as usize;
+    let finish_idx = self.finish_pos as usize;
 
-  //   match p.events[start_idx] {
-  //     Event::Start {
-  //       ref mut kind,
-  //       forward_parent: None,
-  //     } => *kind = TOMBSTONE,
-  //     _ => unreachable!(),
-  //   }
+    match p.events[start_idx] {
+      Event::Start {
+        ref mut kind,
+        forward_parent: None,
+      } => *kind = TOMBSTONE,
+      _ => unreachable!(),
+    }
 
-  //   match p.events[finish_idx] {
-  //     ref mut slot @ Event::Finish => *slot = Event::tombstone(),
-  //     _ => unreachable!(),
-  //   }
+    match p.events[finish_idx] {
+      ref mut slot @ Event::Finish => *slot = Event::tombstone(),
+      _ => unreachable!(),
+    }
 
-  //   Marker::new(self.start_pos)
-  // }
+    Marker::new(self.start_pos)
+  }
 
   // pub(crate) fn kind(&self) -> SyntaxKind {
   //   self.kind

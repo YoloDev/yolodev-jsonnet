@@ -7,14 +7,14 @@ use crate::{
 };
 use anyhow::{bail, Context};
 use std::{
-  collections::HashMap,
+  collections::BTreeMap,
   fs, iter,
   path::{Path, PathBuf},
 };
 
 pub fn generate_parser_tests(mode: Mode) -> Result<()> {
   let tests = tests_from_dir(&project_root().join(Path::new(codegen::GRAMMAR_DIR)))?;
-  fn install_tests(tests: &HashMap<String, Test>, into: &str, mode: Mode) -> Result<()> {
+  fn install_tests(tests: &BTreeMap<String, Test>, into: &str, mode: Mode) -> Result<()> {
     let tests_dir = project_root().join(into);
     if !tests_dir.is_dir() {
       fs::create_dir_all(&tests_dir)?;
@@ -61,8 +61,8 @@ struct Test {
 
 #[derive(Default, Debug)]
 struct Tests {
-  pub ok: HashMap<String, Test>,
-  pub err: HashMap<String, Test>,
+  pub ok: BTreeMap<String, Test>,
+  pub err: BTreeMap<String, Test>,
 }
 
 fn collect_tests(s: &str) -> Vec<Test> {
@@ -129,8 +129,8 @@ fn tests_from_dir(dir: &Path) -> Result<Tests> {
   }
 }
 
-fn existing_tests(dir: &Path, ok: bool) -> Result<HashMap<String, (PathBuf, Test)>> {
-  let mut res = HashMap::new();
+fn existing_tests(dir: &Path, ok: bool) -> Result<BTreeMap<String, (PathBuf, Test)>> {
+  let mut res = BTreeMap::new();
   for file in fs::read_dir(dir)? {
     let file = file?;
     let path = file.path();

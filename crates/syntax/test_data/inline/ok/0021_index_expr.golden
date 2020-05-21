@@ -1,0 +1,9 @@
+SOURCE_FILE@0..9
+  COMPUTED_FIELD_ACCESS_EXPR@0..8
+    IDENT_EXPR@0..3
+      IDENT@0..3 "foo"
+    L_BRACK@3..4 "["
+    IDENT_EXPR@4..7
+      IDENT@4..7 "bar"
+    R_BRACK@7..8 "]"
+  WHITESPACE@8..9 "\n"

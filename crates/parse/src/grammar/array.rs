@@ -8,7 +8,7 @@ pub(super) fn arr_or_comp<S: TokenSource>(p: &mut Parser<S>) -> CompletedMarker 
 
   p.bump(T!['[']);
   while !p.at(EOF) && !p.at(T![']']) {
-    if !expr(p) {
+    if !expr(p).is_some() {
       break;
     }
 

@@ -35,10 +35,8 @@ impl Precedence {
   }
 }
 
-pub(super) fn expr<S: TokenSource>(p: &mut Parser<S>) -> bool {
-  unary_expr(p)
-    .map(|lhs| expr_bp(p, lhs, Precedence::Any))
-    .is_some()
+pub(super) fn expr<S: TokenSource>(p: &mut Parser<S>) -> Option<CompletedMarker> {
+  unary_expr(p).map(|lhs| expr_bp(p, lhs, Precedence::Any))
 }
 
 fn unary_expr<S: TokenSource>(p: &mut Parser<S>) -> Option<CompletedMarker> {
@@ -339,6 +337,37 @@ fn complete_member_computed_or_slice_expr<S: TokenSource>(
 
   let mut count = 0u8;
   let mut ready_for_expr = true;
+  let mut first = None;
+
+  // test index_expr
+  // foo[bar]
+
+  // test index_expr_num
+  // foo[0]
+
+  // test slice_expr_all
+  // foo[::]
+
+  // test slice_expr_from
+  // foo[0:]
+
+  // test slice_expr_to
+  // foo[:10]
+
+  // test slice_expr_step
+  // foo[::2]
+
+  // test slice_expr_from_to
+  // foo[0:10]
+
+  // test slice_expr_from_step
+  // foo[0::2]
+
+  // test_slice_expr_to_step
+  // foo[:10:2]
+
+  // test slice_expr_from_to_step
+  // foo[0:10:2]
 
   // TODO: Produce SLICE_START, SLICE_END and SLICE_STEP nodes
   while !p.at(EOF) && !p.at(T![']']) {
@@ -360,8 +389,26 @@ fn complete_member_computed_or_slice_expr<S: TokenSource>(
       count += 2;
       ready_for_expr = true;
     } else if ready_for_expr {
-      if !expr(p) {
-        break;
+      match expr(p) {
+        None => break,
+        Some(e) => {
+          let m = e.precede(p);
+          let e = m.complete(
+            p,
+            match count {
+              0 => SLICE_FROM,
+              1 => SLICE_TO,
+              2 => SLICE_STEP,
+              _ => unreachable!(),
+            },
+          );
+
+          if count == 0 {
+            if first.is_none() {
+              first = Some(e);
+            }
+          }
+        }
       }
     } else {
       p.error(match count {
@@ -369,6 +416,15 @@ fn complete_member_computed_or_slice_expr<S: TokenSource>(
         _ => "expected ']'",
       });
       break;
+    }
+  }
+
+  if count == 0 {
+    match first.take() {
+      None => (),
+      Some(e) => {
+        e.undo_completion(p).abandon(p);
+      }
     }
   }
 

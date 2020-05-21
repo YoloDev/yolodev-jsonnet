@@ -1,0 +1,5 @@
+Ident@0:3 "foo"
+SymbolLeftBracket@3:4 "["
+Ident@4:7 "bar"
+SymbolRightBracket@7:8 "]"
+Whitespace@8:9 "\n"

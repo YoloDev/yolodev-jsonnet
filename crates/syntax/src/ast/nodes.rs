@@ -505,6 +505,9 @@ ast_node! {
   /// A slice expression.
   pub struct SliceExpr(SLICE_EXPR) {
     l_brack_token: {'['},
+    from_expr: (SLICE_FROM => Expr),
+    to_expr: (SLICE_TO => Expr),
+    step_expr: (SLICE_STEP => Expr),
     r_brack_token: {']'},
   }
 }

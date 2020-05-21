@@ -1,0 +1,14 @@
+SOURCE_FILE@0..10
+  SLICE_EXPR@0..9
+    IDENT_EXPR@0..3
+      IDENT@0..3 "foo"
+    L_BRACK@3..4 "["
+    SLICE_FROM@4..5
+      NUMBER_EXPR@4..5
+        NUMBER@4..5 "0"
+    DOUBLE_COLON_OP@5..7 "::"
+    SLICE_STEP@7..8
+      NUMBER_EXPR@7..8
+        NUMBER@7..8 "2"
+    R_BRACK@8..9 "]"
+  WHITESPACE@9..10 "\n"
