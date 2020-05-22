@@ -45,10 +45,14 @@ pub(super) fn arr_or_comp<S: TokenSource>(p: &mut Parser<S>) -> CompletedMarker 
   )
 }
 
-pub(super) fn comp_specs<S: TokenSource>(p: &mut Parser<S>) {
+pub(super) fn comp_specs<S: TokenSource>(p: &mut Parser<S>) -> CompletedMarker {
   const COMP_START: TokenSet = token_set![T![for], T![if]];
+
+  let m = p.start();
   for_spec(p);
 
+  // test arr_comp_long
+  // [x * y for x in [1, 2, 3] if true for y in [7, 8, 9]]
   while p.at_ts(COMP_START) {
     if p.at(T![for]) {
       for_spec(p);
@@ -56,6 +60,8 @@ pub(super) fn comp_specs<S: TokenSource>(p: &mut Parser<S>) {
       if_spec(p);
     }
   }
+
+  m.complete(p, COMP_SPEC_LIST)
 }
 
 fn for_spec<S: TokenSource>(p: &mut Parser<S>) -> CompletedMarker {

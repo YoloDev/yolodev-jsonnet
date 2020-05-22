@@ -13,17 +13,18 @@ SOURCE_FILE@0..28
         TRUE_KW@6..10 "true"
     COMMA@10..11 ","
     WHITESPACE@11..12 " "
-    FOR_COMP_SPEC@12..26
-      FOR_KW@12..15 "for"
-      WHITESPACE@15..16 " "
-      IDENT@16..17 "x"
-      WHITESPACE@17..18 " "
-      IN_KW@18..20 "in"
-      WHITESPACE@20..21 " "
-      ARRAY_EXPR@21..26
-        L_BRACK@21..22 "["
-        STRING_EXPR@22..25
-          STRING@22..25 "\'x\'"
-        R_BRACK@25..26 "]"
+    COMP_SPEC_LIST@12..26
+      FOR_COMP_SPEC@12..26
+        FOR_KW@12..15 "for"
+        WHITESPACE@15..16 " "
+        IDENT@16..17 "x"
+        WHITESPACE@17..18 " "
+        IN_KW@18..20 "in"
+        WHITESPACE@20..21 " "
+        ARRAY_EXPR@21..26
+          L_BRACK@21..22 "["
+          STRING_EXPR@22..25
+            STRING@22..25 "\'x\'"
+          R_BRACK@25..26 "]"
     R_CURLY@26..27 "}"
   WHITESPACE@27..28 "\n"

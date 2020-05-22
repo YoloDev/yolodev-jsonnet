@@ -5,17 +5,18 @@ SOURCE_FILE@0..18
       IDENT@1..2 "x"
     COMMA@2..3 ","
     WHITESPACE@3..4 " "
-    FOR_COMP_SPEC@4..16
-      FOR_KW@4..7 "for"
-      WHITESPACE@7..8 " "
-      IDENT@8..9 "x"
-      WHITESPACE@9..10 " "
-      IN_KW@10..12 "in"
-      WHITESPACE@12..13 " "
-      ARRAY_EXPR@13..16
-        L_BRACK@13..14 "["
-        NUMBER_EXPR@14..15
-          NUMBER@14..15 "1"
-        R_BRACK@15..16 "]"
+    COMP_SPEC_LIST@4..16
+      FOR_COMP_SPEC@4..16
+        FOR_KW@4..7 "for"
+        WHITESPACE@7..8 " "
+        IDENT@8..9 "x"
+        WHITESPACE@9..10 " "
+        IN_KW@10..12 "in"
+        WHITESPACE@12..13 " "
+        ARRAY_EXPR@13..16
+          L_BRACK@13..14 "["
+          NUMBER_EXPR@14..15
+            NUMBER@14..15 "1"
+          R_BRACK@15..16 "]"
     R_BRACK@16..17 "]"
   WHITESPACE@17..18 "\n"

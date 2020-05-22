@@ -134,12 +134,12 @@ fn existing_tests(dir: &Path, ok: bool) -> Result<BTreeMap<String, (PathBuf, Tes
   for file in fs::read_dir(dir)? {
     let file = file?;
     let path = file.path();
-    if path.extension().unwrap_or_default() != "rs" {
+    if path.extension().unwrap_or_default() != "jsonnet" {
       continue;
     }
     let name = {
-      let file_name = path.file_name().unwrap().to_str().unwrap();
-      file_name[5..file_name.len() - 3].to_string()
+      let file_name = path.file_stem().unwrap().to_str().unwrap();
+      file_name[5..file_name.len()].to_string()
     };
     let text = fs::read_to_string(&path)?;
     let test = Test {
