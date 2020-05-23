@@ -1,9 +1,12 @@
-use crate::{Ident, TextRange};
-use jsonnet_syntax::SmolStr;
+use crate::{CoreIdent, TextRange};
+use core::num::NonZeroU32;
+use jsonnet_syntax::{ast, AstToken, SmolStr};
 
-struct Binding(SmolStr, u32);
+const STD: SmolStr = SmolStr::new_inline_from_ascii(3, b"std");
+const UNDEF: SmolStr = SmolStr::new_inline_from_ascii(6, b"$error");
 
-#[derive(Default)]
+struct Binding(SmolStr, NonZeroU32);
+
 pub(super) struct Binder {
   /// Next binding id
   next: u32,
@@ -17,7 +20,14 @@ pub(super) struct Binder {
 
 impl Binder {
   pub(super) fn new() -> Self {
-    Binder::default()
+    let mut binder = Self {
+      next: 1,
+      locals: Vec::new(),
+      frames: Vec::new(),
+    };
+
+    binder.define(&STD).unwrap();
+    binder
   }
 
   fn push_frame(&mut self) -> BinderFrame {
@@ -42,8 +52,8 @@ impl Binder {
     }
   }
 
-  fn define(&mut self, ident: &SmolStr) -> Option<u32> {
-    if let Some(existing) = self
+  fn define(&mut self, ident: &SmolStr) -> Option<NonZeroU32> {
+    if let Some(_) = self
       .locals
       .iter()
       .rev()
@@ -53,7 +63,7 @@ impl Binder {
       return None;
     }
 
-    let id = self.next;
+    let id = NonZeroU32::new(self.next).unwrap();
     let binding = Binding(ident.clone(), id);
     self.next += 1;
 
@@ -62,7 +72,7 @@ impl Binder {
     Some(id)
   }
 
-  fn lookup(&self, ident: &SmolStr) -> Option<u32> {
+  fn lookup(&self, ident: &SmolStr) -> Option<NonZeroU32> {
     self
       .locals
       .iter()
@@ -92,29 +102,51 @@ impl<'a> BinderFrame<'a> {
     &mut self,
     ident: SmolStr,
     text_range: Option<TextRange>,
-  ) -> Result<Ident, String> {
+  ) -> Result<CoreIdent, String> {
     match self.binder.define(&ident) {
       None => Err(format!("Duplicate binding, '{}' already defined", ident)),
-      Some(id) => Ok(Ident {
+      Some(id) => Ok(CoreIdent {
         name: ident,
-        id,
+        id: Some(id),
         text_range,
       }),
     }
+  }
+
+  pub(super) fn define_from(&mut self, ident: ast::Ident) -> Result<CoreIdent, String> {
+    self.define(
+      ident.syntax().text().clone(),
+      Some(ident.syntax().text_range()),
+    )
   }
 
   pub(super) fn bind(
     &self,
     ident: SmolStr,
     text_range: Option<TextRange>,
-  ) -> Result<Ident, String> {
+  ) -> Result<CoreIdent, String> {
     match self.binder.lookup(&ident) {
       None => Err(format!("Variable '{}' is not defined in this scope", ident)),
-      Some(id) => Ok(Ident {
+      Some(id) => Ok(CoreIdent {
         name: ident,
-        id,
+        id: Some(id),
         text_range,
       }),
+    }
+  }
+
+  pub(super) fn bind_from(&self, ident: ast::Ident) -> Result<CoreIdent, String> {
+    self.bind(
+      ident.syntax().text().clone(),
+      Some(ident.syntax().text_range()),
+    )
+  }
+
+  pub(super) fn new_undef(&self) -> CoreIdent {
+    CoreIdent {
+      name: UNDEF.clone(),
+      id: None,
+      text_range: None,
     }
   }
 

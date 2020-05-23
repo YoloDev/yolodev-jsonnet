@@ -1,4 +1,5 @@
 use crate::TextRange;
+use core::num::NonZeroU32;
 use derive_more::{From, TryInto};
 use jsonnet_syntax::{ast, SmolStr};
 
@@ -49,6 +50,8 @@ impl IntoCoreExpr for Box<CoreExpr> {
 macro_rules! ast_ctor_param {
   (impl Box<CoreExpr>) => {impl IntoCoreExpr};
   ($arg:ident Box<CoreExpr>) => {$arg.into_boxed_expr()};
+  (impl Vec<$t:ty>) => {impl IntoIterator<Item = $t>};
+  ($arg:ident Vec<$t:ty>) => {$arg.into_iter().collect()};
   (impl $t:ty) => {impl Into<$t>};
   ($arg:ident $t:ty) => {$arg.into()};
 }
@@ -87,6 +90,26 @@ macro_rules! ast_node {
           )*
         }
       }
+
+      pub(crate) fn new_from(
+        text_range: TextRange,
+        $(
+          $fld: ast_ctor_param!(impl $($t)*),
+        )*
+      ) -> Self {
+        $name {
+          text_range: Some(text_range),
+          $(
+            $fld: ast_ctor_param!($fld $($t)*),
+          )*
+        }
+      }
+
+      #[allow(unused)]
+      pub(crate) fn with_range(mut self, text_range: TextRange) -> Self {
+        self.text_range = Some(text_range);
+        self
+      }
     }
 
     impl private::Sealed for $name {}
@@ -114,6 +137,7 @@ macro_rules! ast_op {
     $(#[$($m:tt)*])*
     pub enum $name:ident($tok:path) {
       $(
+        $(#[$($variant_m:tt)*])*
         $variant:ident,
       )+
     }
@@ -121,7 +145,7 @@ macro_rules! ast_op {
     $(#[$($m)*])*
     #[derive(Debug, Clone, Copy)]
     pub enum $name {
-      $($variant(Option<TextRange>),)*
+      $($(#[$($variant_m)*])* $variant(Option<TextRange>),)*
     }
 
     impl private::Sealed for $name {}
@@ -137,32 +161,44 @@ macro_rules! ast_op {
     }
 
     impl $name {
-      pub fn from_token(tok: $tok) -> Self {
+      pub fn from_token(tok: $tok) -> Option<Self> {
         use $tok::*;
+        #[allow(unreachable_patterns)]
         match tok {
           $(
-            $variant(it) => $name::$variant(Some(it.text_range())),
+            $variant(it) => Some($name::$variant(Some(it.text_range()))),
+            _ => None,
           )*
         }
       }
+
+      $(
+        paste::item! {
+          $(#[$($variant_m)*])*
+          #[allow(dead_code)]
+          pub(crate) fn [< $variant:snake:lower >]() -> Self {
+            $name::$variant(None)
+          }
+        }
+      )*
     }
   };
 }
 
 /// Identifier
 #[derive(Debug, Clone)]
-pub struct Ident {
+pub struct CoreIdent {
   pub(crate) name: SmolStr,
   /// Identifier id. Unique per document. This makes it so that
   /// when there are two identifiers with the same name in in
   /// different contexts (different functions for instance), they
   /// each get their own unique identifier.
-  pub(crate) id: u32,
+  pub(crate) id: Option<NonZeroU32>,
   pub(crate) text_range: Option<TextRange>,
 }
 
-impl private::Sealed for Ident {}
-impl CoreNode for Ident {
+impl private::Sealed for CoreIdent {}
+impl CoreNode for CoreIdent {
   fn range(&self) -> Option<TextRange> {
     self.text_range
   }
@@ -179,7 +215,7 @@ pub(crate) enum LiteralToken {
 
 /// Literal value
 #[derive(Debug, Clone)]
-pub enum Literal<'a> {
+pub enum CoreLiteral<'a> {
   Null,
   Bool(bool),
   String(&'a str),
@@ -208,20 +244,72 @@ impl LiteralCoreExpr {
     }
   }
 
+  pub(crate) fn new_from(text_range: TextRange, token: LiteralToken) -> Self {
+    LiteralCoreExpr {
+      text_range: Some(text_range),
+      token,
+    }
+  }
+
   pub fn new_str(s: impl Into<String>) -> Self {
     LiteralCoreExpr::new(LiteralToken::String(s.into()))
+  }
+
+  pub fn new_str_from(text_range: TextRange, s: impl Into<String>) -> Self {
+    LiteralCoreExpr::new_from(text_range, LiteralToken::String(s.into()))
+  }
+
+  pub fn new_number(number: f64) -> Self {
+    LiteralCoreExpr::new(LiteralToken::Number(number))
+  }
+
+  pub fn new_number_from(text_range: TextRange, number: f64) -> Self {
+    LiteralCoreExpr::new_from(text_range, LiteralToken::Number(number))
+  }
+
+  pub fn new_int(s: u32) -> Self {
+    LiteralCoreExpr::new_number(s.into())
+  }
+
+  pub fn new_null() -> Self {
+    LiteralCoreExpr::new(LiteralToken::Null)
+  }
+
+  pub fn new_null_from(text_range: TextRange) -> Self {
+    LiteralCoreExpr::new_from(text_range, LiteralToken::Null)
+  }
+
+  pub fn new_true() -> Self {
+    LiteralCoreExpr::new(LiteralToken::True)
+  }
+
+  pub fn new_true_from(text_range: TextRange) -> Self {
+    LiteralCoreExpr::new_from(text_range, LiteralToken::True)
+  }
+
+  pub fn new_false() -> Self {
+    LiteralCoreExpr::new(LiteralToken::False)
+  }
+
+  pub fn new_false_from(text_range: TextRange) -> Self {
+    LiteralCoreExpr::new_from(text_range, LiteralToken::False)
+  }
+
+  pub(crate) fn with_range(mut self, text_range: TextRange) -> Self {
+    self.text_range = Some(text_range);
+    self
   }
 }
 
 impl LiteralCoreExpr {
   /// Get literal value
-  pub fn value(&self) -> Literal {
+  pub fn value(&self) -> CoreLiteral {
     match &self.token {
-      LiteralToken::Null => Literal::Null,
-      LiteralToken::True => Literal::Bool(true),
-      LiteralToken::False => Literal::Bool(false),
-      LiteralToken::String(v) => Literal::String(v),
-      LiteralToken::Number(v) => Literal::Number(*v),
+      LiteralToken::Null => CoreLiteral::Null,
+      LiteralToken::True => CoreLiteral::Bool(true),
+      LiteralToken::False => CoreLiteral::Bool(false),
+      LiteralToken::String(v) => CoreLiteral::String(v),
+      LiteralToken::Number(v) => CoreLiteral::Number(*v),
     }
   }
 }
@@ -238,7 +326,7 @@ ast_node! {
 
 /// Import kind
 #[derive(Debug, Clone, Copy)]
-pub enum ImportKind {
+pub enum CoreImportKind {
   /// Import file as jsonnet file (and evaluate it)
   Jsonnet,
 
@@ -250,7 +338,7 @@ ast_node! {
   /// Import expression
   pub struct ImportCoreExpr {
     file: (String),
-    kind: (ImportKind),
+    kind: (CoreImportKind),
   }
 }
 
@@ -269,7 +357,7 @@ impl ErrorCoreExpr {
 
 ast_op! {
   /// Object field assignment operator
-  pub enum ObjectFieldOperator(ast::ObjectFieldAssignmentOp) {
+  pub enum CoreObjectFieldOperator(ast::ObjectFieldAssignmentOp) {
     Default,
     Hidden,
     Visible,
@@ -281,9 +369,9 @@ ast_op! {
 
 ast_node! {
   /// Object field
-  pub struct ObjectField {
+  pub struct CoreObjectField {
     name: (CoreExpr),
-    op: (ObjectFieldOperator),
+    op: (CoreObjectFieldOperator),
     value: (CoreExpr),
   }
 }
@@ -292,7 +380,7 @@ ast_node! {
   /// Object expression
   pub struct ObjectCoreExpr {
     asserts: (Vec<CoreExpr>),
-    fields: (Vec<ObjectField>),
+    fields: (Vec<CoreObjectField>),
   }
 }
 
@@ -301,7 +389,7 @@ ast_node! {
   pub struct ObjectCompCoreExpr {
     field_name: (Box<CoreExpr>),
     field_value: (Box<CoreExpr>),
-    loop_var_ident: (Ident),
+    loop_var_ident: (CoreIdent),
     list: (Box<CoreExpr>),
   }
 }
@@ -316,8 +404,8 @@ ast_node! {
 
 ast_node! {
   /// Local binding
-  pub struct LocalBind {
-    ident: (Ident),
+  pub struct CoreLocalBind {
+    ident: (CoreIdent),
     value: (CoreExpr),
   }
 }
@@ -325,7 +413,7 @@ ast_node! {
 ast_node! {
   /// Local expression
   pub struct LocalCoreExpr {
-    binds: (Vec<LocalBind>),
+    binds: (Vec<CoreLocalBind>),
     rest: (Box<CoreExpr>),
   }
 }
@@ -341,10 +429,9 @@ ast_node! {
 
 ast_op! {
   /// Binary operator
-  pub enum BinaryOperator(ast::BinaryOp) {
+  pub enum CoreBinaryOperator(ast::BinaryOp) {
     Mult,
     Div,
-    Mod,
     Plus,
     Minus,
     ShiftL,
@@ -353,9 +440,6 @@ ast_op! {
     GreaterThanOrEquals,
     LessThan,
     LessThanOrEquals,
-    In,
-    Equals,
-    NotEquals,
     BitAnd,
     BitXor,
     BitOr,
@@ -368,14 +452,14 @@ ast_node! {
   /// Binary expression
   pub struct BinaryCoreExpr {
     lhs: (Box<CoreExpr>),
-    op: (BinaryOperator),
+    op: (CoreBinaryOperator),
     rhs: (Box<CoreExpr>),
   }
 }
 
 ast_op! {
   /// Unary operator
-  pub enum UnaryOperator(ast::UnaryOp) {
+  pub enum CoreUnaryOperator(ast::UnaryOp) {
     Plus,
     Minus,
     Not,
@@ -386,15 +470,15 @@ ast_op! {
 ast_node! {
   /// Unary expression
   pub struct UnaryCoreExpr {
-    op: (UnaryOperator),
+    op: (CoreUnaryOperator),
     expr: (Box<CoreExpr>),
   }
 }
 
 ast_node! {
   /// Function param
-  pub struct FunctionParam {
-    name: (Ident),
+  pub struct CoreFunctionParam {
+    name: (CoreIdent),
     default_value: (CoreExpr),
   }
 }
@@ -402,15 +486,15 @@ ast_node! {
 ast_node! {
   /// Function expression
   pub struct FunctionCoreExpr {
-    params: (Vec<FunctionParam>),
+    params: (Vec<CoreFunctionParam>),
     expr: (Box<CoreExpr>),
   }
 }
 
 ast_node! {
   /// Function param
-  pub struct NamedArg {
-    name: (Ident),
+  pub struct CoreNamedArg {
+    name: (SmolStr),
     value: (CoreExpr),
   }
 }
@@ -420,7 +504,8 @@ ast_node! {
   pub struct ApplyCoreExpr {
     target: (Box<CoreExpr>),
     positionals: (Vec<CoreExpr>),
-    named: (Vec<NamedArg>),
+    named: (Vec<CoreNamedArg>),
+    is_tailstrict: (bool),
   }
 }
 
@@ -440,7 +525,7 @@ impl ArrayCoreExpr {
 ast_node! {
   /// Ident expression
   pub struct IdentCoreExpr {
-    ident: (Ident),
+    ident: (CoreIdent),
   }
 }
 
@@ -463,4 +548,27 @@ pub enum CoreExpr {
   Apply(ApplyCoreExpr),
   Error(ErrorCoreExpr),
   Import(ImportCoreExpr),
+}
+
+impl CoreExpr {
+  pub(crate) fn with_range(self, text_range: TextRange) -> Self {
+    match self {
+      CoreExpr::Literal(it) => CoreExpr::Literal(it.with_range(text_range)),
+      CoreExpr::SelfValue(it) => CoreExpr::SelfValue(it.with_range(text_range)),
+      CoreExpr::Super(it) => CoreExpr::Super(it.with_range(text_range)),
+      CoreExpr::Object(it) => CoreExpr::Object(it.with_range(text_range)),
+      CoreExpr::ObjectComp(it) => CoreExpr::ObjectComp(it.with_range(text_range)),
+      CoreExpr::Array(it) => CoreExpr::Array(it.with_range(text_range)),
+      CoreExpr::MemberAccess(it) => CoreExpr::MemberAccess(it.with_range(text_range)),
+      CoreExpr::Ident(it) => CoreExpr::Ident(it.with_range(text_range)),
+      CoreExpr::Local(it) => CoreExpr::Local(it.with_range(text_range)),
+      CoreExpr::If(it) => CoreExpr::If(it.with_range(text_range)),
+      CoreExpr::Binary(it) => CoreExpr::Binary(it.with_range(text_range)),
+      CoreExpr::Unary(it) => CoreExpr::Unary(it.with_range(text_range)),
+      CoreExpr::Function(it) => CoreExpr::Function(it.with_range(text_range)),
+      CoreExpr::Apply(it) => CoreExpr::Apply(it.with_range(text_range)),
+      CoreExpr::Error(it) => CoreExpr::Error(it.with_range(text_range)),
+      CoreExpr::Import(it) => CoreExpr::Import(it.with_range(text_range)),
+    }
+  }
 }

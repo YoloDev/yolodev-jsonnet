@@ -378,7 +378,7 @@ impl_node! {
 impl_enum!(BinaryOp {
   Mult,
   Div,
-  Mod,
+  Modulo,
   Plus,
   Minus,
   ShiftL,
@@ -387,7 +387,7 @@ impl_enum!(BinaryOp {
   GreaterThanOrEquals,
   LessThan,
   LessThanOrEquals,
-  In,
+  InObject,
   Equals,
   NotEquals,
   BitAnd,
@@ -406,7 +406,8 @@ impl_node! {
 }
 
 impl_node! {
-  fn SliceExpr(n, s, 5) {
+  fn SliceExpr(n, s, 6) {
+    s.serialize_field("target", &n.target().describe())?;
     s.serialize_field("l_brack_token", &n.l_brack_token().describe())?;
     s.serialize_field("from_expr", &n.from_expr().describe())?;
     s.serialize_field("to_expr", &n.to_expr().describe())?;

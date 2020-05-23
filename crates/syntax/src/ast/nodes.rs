@@ -462,7 +462,7 @@ op_kind! {
   pub enum BinaryOp {
     Mult(*),
     Div(/),
-    Mod(%),
+    Modulo(%),
     Plus(+),
     Minus(-),
     ShiftL(<<),
@@ -471,7 +471,7 @@ op_kind! {
     GreaterThanOrEquals(>=),
     LessThan(<),
     LessThanOrEquals(<=),
-    In(in),
+    InObject(in),
     Equals(==),
     NotEquals(!=),
     BitAnd(&),
@@ -504,6 +504,7 @@ ast_node! {
   // TODO: this one probably needs some manual impls to get the slice expressions
   /// A slice expression.
   pub struct SliceExpr(SLICE_EXPR) {
+    target: Expr,
     l_brack_token: {'['},
     from_expr: (SLICE_FROM => Expr),
     to_expr: (SLICE_TO => Expr),

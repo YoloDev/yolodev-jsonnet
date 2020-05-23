@@ -66,6 +66,15 @@ impl Comment {
   }
 }
 
+impl Number {
+  pub fn value(&self) -> Option<f64> {
+    match self.text().as_str().parse() {
+      Ok(v) => Some(v),
+      Err(_) => None,
+    }
+  }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum CommentKind {
   Line,

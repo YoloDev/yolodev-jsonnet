@@ -1,15 +1,7 @@
 extern crate alloc;
 
-mod ast;
-mod lowering;
+mod core_ast;
+mod desugar;
 
-pub use crate::ast::*;
+pub use crate::{core_ast::*, desugar::desugar};
 pub use jsonnet_syntax::TextRange;
-
-#[cfg(test)]
-mod tests {
-  #[test]
-  fn it_works() {
-    assert_eq!(2 + 2, 4);
-  }
-}
