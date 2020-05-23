@@ -10,7 +10,7 @@ use rowan::{GreenNodeBuilder, Language};
 
 use crate::{Parse, SmolStr, SyntaxError, SyntaxKind, TextSize};
 
-pub(crate) use rowan::{GreenNode, GreenToken};
+pub(crate) use rowan::GreenNode;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum JsonnetLanguage {}
@@ -30,7 +30,6 @@ pub type SyntaxNode = rowan::SyntaxNode<JsonnetLanguage>;
 pub type SyntaxToken = rowan::SyntaxToken<JsonnetLanguage>;
 pub type SyntaxElement = rowan::SyntaxElement<JsonnetLanguage>;
 pub type SyntaxNodeChildren = rowan::SyntaxNodeChildren<JsonnetLanguage>;
-pub type SyntaxElementChildren = rowan::SyntaxElementChildren<JsonnetLanguage>;
 
 pub use rowan::{Direction, NodeOrToken};
 

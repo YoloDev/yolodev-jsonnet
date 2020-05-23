@@ -22,5 +22,8 @@ pub(crate) fn root<S: TokenSource>(p: &mut Parser<S>) {
   let m = p.start();
   p.eat(SHEBANG);
   expr(p);
+  if !p.at(EOF) {
+    p.error("Expected end of file");
+  }
   m.complete(p, SOURCE_FILE);
 }

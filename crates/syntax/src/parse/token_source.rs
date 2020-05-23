@@ -1,6 +1,6 @@
 use jsonnet_parse::{Token as PToken, TokenSource};
 
-use crate::{parse::lex::Token, SyntaxKind::EOF, TextRange, TextSize};
+use crate::{parse::lex::Token, SyntaxKind::EOF};
 
 pub(crate) struct TextTokenSource {
   /// non-whitespace/comment tokens

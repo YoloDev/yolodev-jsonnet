@@ -147,7 +147,7 @@ impl Parse<SourceFile> {
 
 impl SourceFile {
   pub fn parse(text: &str) -> Parse<SourceFile> {
-    let (green, mut errors) = parse::parse_text(text);
+    let (green, errors) = parse::parse_text(text);
     let root = SyntaxNode::new_root(green.clone());
 
     // if cfg!(debug_assertions) {

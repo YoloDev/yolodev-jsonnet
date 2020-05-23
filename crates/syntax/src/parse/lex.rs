@@ -48,8 +48,7 @@ pub fn tokenize(text: &str) -> (Vec<Token>, Vec<SyntaxError>) {
     let token_len: TextSize = token.len.try_into().unwrap();
     let token_range = TextRange::at(offset.try_into().unwrap(), token_len);
 
-    let (syntax_kind, err_message) =
-      lexer_token_kind_to_syntax_kind(token.kind, &text[token_range]);
+    let (syntax_kind, err_message) = lexer_token_kind_to_syntax_kind(token.kind);
 
     tokens.push(Token {
       kind: syntax_kind,
@@ -75,10 +74,7 @@ fn strip_shebang(input: &str) -> Option<u32> {
 }
 
 /// Returns `SyntaxKind` and an optional tokenize error message.
-fn lexer_token_kind_to_syntax_kind(
-  token_kind: TokenKind,
-  token_text: &str,
-) -> (SyntaxKind, Option<&'static str>) {
+fn lexer_token_kind_to_syntax_kind(token_kind: TokenKind) -> (SyntaxKind, Option<&'static str>) {
   let syntax_kind = match token_kind {
     TokenKind::KeywordAssert => T![assert],
     TokenKind::KeywordElse => T![else],

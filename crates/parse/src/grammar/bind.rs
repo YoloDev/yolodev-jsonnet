@@ -28,7 +28,7 @@ pub(super) fn params<S: TokenSource>(p: &mut Parser<S>) -> CompletedMarker {
   p.bump(T!['(']);
 
   while !p.at(EOF) && !p.at(T![')']) {
-    let mut m = p.start();
+    let m = p.start();
     if !p.expect(IDENT) {
       m.abandon(p);
       break;

@@ -2,11 +2,8 @@ use core::mem;
 use jsonnet_parse::{ParseError, TreeSink};
 
 use crate::{
-  parse::Token,
-  syntax_node::GreenNode,
-  SmolStr, SyntaxError,
-  SyntaxKind::{self, *},
-  SyntaxTreeBuilder, TextRange, TextSize,
+  parse::Token, syntax_node::GreenNode, SmolStr, SyntaxError, SyntaxKind, SyntaxTreeBuilder,
+  TextRange, TextSize,
 };
 
 /// Bridges the parser with our specific syntax tree representation.

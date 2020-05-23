@@ -14,7 +14,7 @@ use walkdir::{DirEntry, WalkDir};
 
 use crate::{
   codegen::Mode,
-  shell::{date_iso, fs2, pushd, pushenv, rm_rf, run},
+  shell::{pushd, pushenv, run},
 };
 
 pub use anyhow::{bail, Context as _, Result};
@@ -61,18 +61,18 @@ pub fn run_rustfmt(mode: Mode) -> Result<()> {
   Ok(())
 }
 
-fn reformat(text: impl std::fmt::Display) -> Result<String> {
-  let _e = pushenv("RUSTUP_TOOLCHAIN", "stable");
+// fn reformat(text: impl std::fmt::Display) -> Result<String> {
+//   let _e = pushenv("RUSTUP_TOOLCHAIN", "stable");
 
-  ensure_rustfmt()?;
-  let stdout = run!(
-      "rustfmt --config-path {} --config fn_single_line=true", project_root().join("rustfmt.toml").display();
-      <text.to_string().as_bytes()
-  )?;
+//   ensure_rustfmt()?;
+//   let stdout = run!(
+//       "rustfmt --config-path {} --config fn_single_line=true", project_root().join("rustfmt.toml").display();
+//       <text.to_string().as_bytes()
+//   )?;
 
-  let preamble = "Generated file, do not edit by hand, see `xtask/src/codegen`";
-  Ok(format!("//! {}\n\n{}\n", preamble, stdout))
-}
+//   let preamble = "Generated file, do not edit by hand, see `xtask/src/codegen`";
+//   Ok(format!("//! {}\n\n{}\n", preamble, stdout))
+// }
 
 fn ensure_rustfmt() -> Result<()> {
   let out = run!("rustfmt --version")?;

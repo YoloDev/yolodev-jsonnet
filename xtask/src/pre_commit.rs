@@ -2,7 +2,7 @@
 
 use std::{fs, path::PathBuf};
 
-use anyhow::{bail, Result};
+use anyhow::Result;
 
 use crate::{project_root, run_rustfmt, shell::run, Mode};
 

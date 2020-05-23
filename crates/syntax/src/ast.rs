@@ -2,7 +2,6 @@
 
 mod nodes;
 mod tokens;
-mod traits;
 
 use crate::{
   syntax_node::{SyntaxNode, SyntaxNodeChildren, SyntaxToken},
@@ -10,7 +9,7 @@ use crate::{
 };
 use core::marker::PhantomData;
 
-pub use self::{nodes::*, tokens::*, traits::*};
+pub use self::{nodes::*, tokens::*};
 
 /// The main trait to go from untyped `SyntaxNode`  to a typed ast. The
 /// conversion itself has zero runtime cost: ast and syntax nodes have exactly
@@ -86,12 +85,12 @@ mod support {
       .find(|it| it.kind() == kind)
   }
 
-  pub(super) fn token_any_of(parent: &SyntaxNode, kinds: &[SyntaxKind]) -> Option<SyntaxToken> {
-    parent
-      .children_with_tokens()
-      .filter_map(|it| it.into_token())
-      .find(|it| kinds.contains(&it.kind()))
-  }
+  // pub(super) fn token_any_of(parent: &SyntaxNode, kinds: &[SyntaxKind]) -> Option<SyntaxToken> {
+  //   parent
+  //     .children_with_tokens()
+  //     .filter_map(|it| it.into_token())
+  //     .find(|it| kinds.contains(&it.kind()))
+  // }
 
   pub(super) fn token_kind<T: AstToken>(parent: &SyntaxNode) -> Option<T> {
     parent
