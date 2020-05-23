@@ -57,7 +57,7 @@ impl Binder {
       .locals
       .iter()
       .rev()
-      .take(self.locals.len() - *self.frames.last().unwrap())
+      .take(self.locals.len() - *self.frames.last().unwrap_or(&0))
       .find(|Binding(i, ..)| i == ident)
     {
       return None;
@@ -160,7 +160,7 @@ impl<'a> BinderFrame<'a> {
 
 impl Binder {
   pub(super) fn frame<'a>(&'a mut self) -> BinderFrame<'a> {
-    debug_assert_eq!(self.locals.len(), 0);
+    debug_assert_eq!(self.locals.len(), 1);
     self.push_frame()
   }
 }

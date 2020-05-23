@@ -1,0 +1,8 @@
+local $arr#3 = [1.0];
+std#1["join"]([],
+  std#1["makeArray"](std#1["length"]($arr#3),
+    function($i#4 = error "Parameter \'$i\' not bound")
+      local x#2 = $arr#3[$i#4];
+      [x#2],
+  ),
+)

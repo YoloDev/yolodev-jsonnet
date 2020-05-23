@@ -1,0 +1,17 @@
+local $arr#4 = [1.0, 2.0, 3.0];
+std#1["join"]([],
+  std#1["makeArray"](std#1["length"]($arr#4),
+    function($i#5 = error "Parameter \'$i\' not bound")
+      local x#2 = $arr#4[$i#5];
+      if true
+      then local $arr#6 = [7.0, 8.0, 9.0];
+      std#1["join"]([],
+        std#1["makeArray"](std#1["length"]($arr#6),
+          function($i#7 = error "Parameter \'$i\' not bound")
+            local y#3 = $arr#6[$i#7];
+            [(x#2 * y#3)],
+        ),
+      )
+      else [],
+  ),
+)

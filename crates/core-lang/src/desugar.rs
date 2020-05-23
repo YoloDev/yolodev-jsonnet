@@ -167,7 +167,10 @@ fn desugar_arrcomp(
 impl Desugar<CoreExpr, ExprCtx> for Option<ast::Expr> {
   fn desugar(self, errors: &mut Vec<Error>, binder: &mut BinderFrame, ctx: &ExprCtx) -> CoreExpr {
     match self {
-      None => ErrorCoreExpr::new_str("Missing expression").into_expr(),
+      None => {
+        errors.push((None, "Missing expression".into()));
+        ErrorCoreExpr::new_str("Missing expression").into_expr()
+      }
       Some(e) => e.desugar(errors, binder, ctx),
     }
   }

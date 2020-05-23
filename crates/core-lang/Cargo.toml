@@ -9,5 +9,18 @@ edition = "2018"
 [dependencies]
 derive_more = "0.99"
 paste = "0.1"
+pretty = { version = "0.10", optional = true }
+dtoa = { version = "0.4.5", optional = true }
 
 jsonnet-syntax = { version = "0.1.0", path = "../syntax" }
+
+[dev-dependencies]
+test-case = "1"
+pretty_assertions = "0.6"
+test-gen = { version = "0.1", path = "../../build/test-gen" }
+
+[features]
+default = []
+
+# NOTE: display feature requires std
+display = ["pretty", "dtoa"]
