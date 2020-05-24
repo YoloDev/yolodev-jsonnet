@@ -1,1 +1,0 @@
-CCompiler { compiler: "gcc" }

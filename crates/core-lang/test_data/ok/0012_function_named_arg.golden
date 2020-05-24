@@ -1,0 +1,2 @@
+local foo#2 = function(bar#3 = error "Parameter \'bar\' not bound") bar#3;
+foo#2(bar = 0.0)

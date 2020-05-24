@@ -230,38 +230,53 @@ impl Desugar<CoreExpr, ExprCtx> for ast::ObjectExpr {
       }
     }
 
-    let mut binder = binder.frame();
-    let mut binds = Vec::with_capacity(locals.len() + 1);
+    let (asserts, fields) = {
+      let mut binder = binder.frame();
+      let mut binds = Vec::with_capacity(locals.len() + 1);
 
-    if !ctx.in_object {
-      binds.push(CoreLocalBind::new(
-        binder.define(ROOT.clone(), None).unwrap(),
-        SelfCoreExpr::new(),
-      ));
-    }
+      if !ctx.in_object {
+        binds.push(CoreLocalBind::new(
+          binder.define(ROOT.clone(), None).unwrap(),
+          SelfCoreExpr::new(),
+        ));
+      }
 
-    binds.extend(
-      locals
+      for local in locals.iter().flat_map(|l| l.bind()).flat_map(|b| b.name()) {
+        if let Err(_) = binder.define_from(local) {
+          errors.push((Some(text_range), "Duplicate binding".into()));
+        }
+      }
+
+      binds.extend(
+        locals
+          .into_iter()
+          .map(|local| local.desugar(errors, &mut binder, ctx)),
+      );
+
+      let asserts = asserts
         .into_iter()
-        .map(|local| local.desugar(errors, &mut binder, ctx)),
-    );
+        .map(|assert| assert.desugar(errors, &mut binder, &binds))
+        .collect::<Vec<_>>();
 
-    let asserts = asserts
+      let mut fields = Vec::with_capacity(values.len() + functions.len());
+      fields.extend(
+        values
+          .into_iter()
+          .filter_map(|f| f.desugar(errors, &mut binder, &binds)),
+      );
+      fields.extend(
+        functions
+          .into_iter()
+          .filter_map(|f| f.desugar(errors, &mut binder, &binds)),
+      );
+
+      (asserts, fields)
+    };
+
+    let fields = fields
       .into_iter()
-      .map(|assert| assert.desugar(errors, &mut binder, &binds))
+      .map(|f| f.desugar(errors, binder, ctx))
       .collect::<Vec<_>>();
-
-    let mut fields = Vec::with_capacity(values.len() + functions.len());
-    fields.extend(
-      values
-        .into_iter()
-        .map(|f| f.desugar(errors, &mut binder, &binds)),
-    );
-    fields.extend(
-      functions
-        .into_iter()
-        .map(|f| f.desugar(errors, &mut binder, &binds)),
-    );
 
     ObjectCoreExpr::new_from(text_range, asserts, fields).into_expr()
   }
@@ -423,6 +438,17 @@ impl Desugar<CoreExpr, ExprCtx> for ast::LocalExpr {
     let text_range = self.syntax().text_range();
     let mut binder = binder.frame();
 
+    for bind in self
+      .binds()
+      .into_iter()
+      .flat_map(|b| b.bindings())
+      .flat_map(|b| b.name())
+    {
+      if let Err(_) = binder.define_from(bind) {
+        errors.push((Some(text_range), "Duplicate variable definition".into()));
+      }
+    }
+
     let binds = match self.binds() {
       None => {
         errors.push((Some(text_range), "No binds in local expression".into()));
@@ -456,6 +482,17 @@ impl Desugar<CoreExpr, ExprCtx> for ast::FunctionExpr {
     let text_range = self.syntax().text_range();
 
     let mut binder = binder.frame();
+    for param in self
+      .params()
+      .iter()
+      .flat_map(|p| p.params())
+      .flat_map(|p| p.name())
+    {
+      if let Err(_) = binder.define_from(param) {
+        errors.push((Some(text_range), "Duplicate parameter definition".into()));
+      }
+    }
+
     let params = match self.params() {
       None => {
         errors.push((Some(text_range), "No function params list".into()));
@@ -965,6 +1002,7 @@ impl Desugar<CoreFunctionParam, ExprCtx> for ast::Param {
     binder: &mut BinderFrame,
     ctx: &ExprCtx,
   ) -> CoreFunctionParam {
+    // Expectes function param names to already be defined.
     let text_range = self.syntax().text_range();
 
     let name = match self.name() {
@@ -1020,7 +1058,7 @@ impl Desugar<CoreLocalBind, ExprCtx> for ast::ValueBind {
         errors.push((Some(text_range), "Missing member name".into()));
         binder.new_undef()
       }
-      Some(ident) => match binder.define_from(ident) {
+      Some(ident) => match binder.bind_from(ident) {
         Err(e) => {
           errors.push((Some(text_range), e));
           binder.new_undef()
@@ -1048,7 +1086,7 @@ impl Desugar<CoreLocalBind, ExprCtx> for ast::FunctionBind {
         errors.push((Some(text_range), "Missing member name".into()));
         binder.new_undef()
       }
-      Some(ident) => match binder.define_from(ident) {
+      Some(ident) => match binder.bind_from(ident) {
         Err(e) => {
           errors.push((Some(text_range), e));
           binder.new_undef()
@@ -1065,6 +1103,12 @@ impl Desugar<CoreLocalBind, ExprCtx> for ast::FunctionBind {
           ErrorCoreExpr::new_str("No function params list").into_expr()
         }
         Some(p) => {
+          for param in p.params().flat_map(|p| p.name()) {
+            if let Err(_) = binder.define_from(param) {
+              errors.push((Some(text_range), "Duplicate parameter definition".into()));
+            }
+          }
+
           let params = p
             .params()
             .map(|p| p.desugar(errors, &mut binder, ctx))
@@ -1187,21 +1231,57 @@ impl Desugar<CoreExpr, [CoreLocalBind]> for ast::AssertObjField {
   }
 }
 
-impl Desugar<CoreObjectField, [CoreLocalBind]> for ast::ValueObjField {
+struct PartiallyDesugaredField {
+  text_range: TextRange,
+  name: ast::ObjectFieldName,
+  op: CoreObjectFieldOperator,
+  value: CoreExpr,
+}
+
+impl PartiallyDesugaredField {
+  fn new_from(
+    text_range: TextRange,
+    name: ast::ObjectFieldName,
+    op: CoreObjectFieldOperator,
+    value: impl IntoCoreExpr,
+  ) -> Self {
+    PartiallyDesugaredField {
+      text_range,
+      name,
+      op,
+      value: value.into_expr(),
+    }
+  }
+}
+
+impl Desugar<CoreObjectField, ExprCtx> for PartiallyDesugaredField {
+  fn desugar(
+    self,
+    errors: &mut Vec<Error>,
+    binder: &mut BinderFrame,
+    ctx: &ExprCtx,
+  ) -> CoreObjectField {
+    let name = self.name.desugar(errors, binder, ctx);
+
+    CoreObjectField::new_from(self.text_range, name, self.op, self.value)
+  }
+}
+
+impl Desugar<Option<PartiallyDesugaredField>, [CoreLocalBind]> for ast::ValueObjField {
   fn desugar(
     self,
     errors: &mut Vec<Error>,
     binder: &mut BinderFrame,
     ctx: &[CoreLocalBind],
-  ) -> CoreObjectField {
+  ) -> Option<PartiallyDesugaredField> {
     let text_range = self.syntax().text_range();
 
     let name = match self.name() {
       None => {
         errors.push((Some(text_range), "Missing member name".into()));
-        ErrorCoreExpr::new_str("Missing member name").into_expr()
+        return None;
       }
-      Some(name) => name.desugar(errors, binder, ExprCtx::IN_OBJECT),
+      Some(name) => name,
     };
 
     //let name = self.name().desugar(errors, binder, ExprCtx::IN_OBJECT);
@@ -1215,25 +1295,27 @@ impl Desugar<CoreObjectField, [CoreLocalBind]> for ast::ValueObjField {
     let expr = self.expr().desugar(errors, binder, ExprCtx::IN_OBJECT);
     let value = LocalCoreExpr::new(ctx.iter().cloned(), expr);
 
-    CoreObjectField::new_from(text_range, name, op, value)
+    Some(PartiallyDesugaredField::new_from(
+      text_range, name, op, value,
+    ))
   }
 }
 
-impl Desugar<CoreObjectField, [CoreLocalBind]> for ast::FunctionObjField {
+impl Desugar<Option<PartiallyDesugaredField>, [CoreLocalBind]> for ast::FunctionObjField {
   fn desugar(
     self,
     errors: &mut Vec<Error>,
     binder: &mut BinderFrame,
     ctx: &[CoreLocalBind],
-  ) -> CoreObjectField {
+  ) -> Option<PartiallyDesugaredField> {
     let text_range = self.syntax().text_range();
 
     let name = match self.name() {
       None => {
         errors.push((Some(text_range), "Missing member name".into()));
-        ErrorCoreExpr::new_str("Missing member name").into_expr()
+        return None;
       }
-      Some(name) => name.desugar(errors, binder, ExprCtx::IN_OBJECT),
+      Some(name) => name,
     };
 
     let op = match self.op() {
@@ -1252,6 +1334,12 @@ impl Desugar<CoreObjectField, [CoreLocalBind]> for ast::FunctionObjField {
           ErrorCoreExpr::new_str("No function params list").into_expr()
         }
         Some(p) => {
+          for param in p.params().flat_map(|p| p.name()) {
+            if let Err(_) = binder.define_from(param) {
+              errors.push((Some(text_range), "Duplicate parameter definition".into()));
+            }
+          }
+
           let params = p
             .params()
             .map(|p| p.desugar(errors, &mut binder, ExprCtx::IN_OBJECT))
@@ -1266,7 +1354,9 @@ impl Desugar<CoreObjectField, [CoreLocalBind]> for ast::FunctionObjField {
 
     let value = LocalCoreExpr::new(ctx.iter().cloned(), expr);
 
-    CoreObjectField::new_from(text_range, name, op, value)
+    Some(PartiallyDesugaredField::new_from(
+      text_range, name, op, value,
+    ))
   }
 }
 

@@ -1,0 +1,1 @@
+function(a#2 = error "Parameter \'a\' not bound", b#3 = 0.0) (a#2 + b#3)

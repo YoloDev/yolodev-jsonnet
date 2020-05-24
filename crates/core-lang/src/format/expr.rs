@@ -212,9 +212,11 @@ impl_format! {
 
     let asserts = f.intersperse(
       e.asserts.iter().map(|e|
-        f.text("assert")
+        f.text("_:")
           .append(f.space())
-          .append(e.format(f))),
+          .append(e.format(f))
+          .nest(2)
+          .group()),
       sep.clone());
 
     let fields = f.intersperse(
@@ -223,7 +225,8 @@ impl_format! {
 
     let any_empty = e.asserts.is_empty() || e.fields.is_empty();
 
-    asserts
+    f.line()
+      .append(asserts)
       .append(if any_empty { f.nil() } else { f.line_() })
       .append(fields)
       .nest(2)

@@ -239,9 +239,4 @@ mod tests {
     let source_file = SourceFile::parse(content);
     source_file.debug_dump()
   }
-
-  #[test]
-  fn tmp() {
-    SourceFile::parse("@\"test\"");
-  }
 }

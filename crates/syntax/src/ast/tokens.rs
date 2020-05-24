@@ -179,16 +179,20 @@ pub struct QuoteOffsets {
 
 impl QuoteOffsets {
   fn from_single_char_quote<'a>(literal: &'a str) -> Option<QuoteOffsets> {
+    let mut start = TextSize::from(0);
     let quote = {
       let mut chars = literal.chars();
       match chars.next() {
         Some('"') => '"',
         Some('\'') => '\'',
-        Some('@') => match chars.next() {
-          Some('"') => '"',
-          Some('\'') => '\'',
-          _ => return None,
-        },
+        Some('@') => {
+          start = TextSize::from(1);
+          match chars.next() {
+            Some('"') => '"',
+            Some('\'') => '\'',
+            _ => return None,
+          }
+        }
         _ => return None,
       }
     };
@@ -200,7 +204,6 @@ impl QuoteOffsets {
       return None;
     }
 
-    let start = TextSize::from(0);
     let left_quote = TextSize::try_from(left_quote).unwrap() + TextSize::of(quote);
     let right_quote = TextSize::try_from(right_quote).unwrap();
     let end = TextSize::of(literal);

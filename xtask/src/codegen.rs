@@ -12,7 +12,6 @@ const GRAMMAR_DIR: &str = "crates/parse/src/grammar";
 const OK_INLINE_TESTS_DIRS: &[&str] = &[
   "crates/syntax/test_data/inline/ok",
   "crates/lex/test_data/inline/ok",
-  "crates/core-lang/test_data/inline/ok",
 ];
 const ERR_INLINE_TESTS_DIRS: &[&str] = &[
   "crates/syntax/test_data/inline/err",

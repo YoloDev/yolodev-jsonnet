@@ -94,6 +94,8 @@ fn obj_assert<S: TokenSource>(p: &mut Parser<S>) -> CompletedMarker {
 }
 
 fn obj_value_field<S: TokenSource>(p: &mut Parser<S>) -> CompletedMarker {
+  const OBJECT_FIELD_OP: TokenSet = token_set![T![:], T![::], T![:::], T![+:], T![+::], T![+:::],];
+
   assert!(p.at_ts(FIELD_START));
   let m = p.start();
   field_name(p);
@@ -104,7 +106,11 @@ fn obj_value_field<S: TokenSource>(p: &mut Parser<S>) -> CompletedMarker {
     is_function = true;
   }
 
-  p.expect(T![:]);
+  if p.at_ts(OBJECT_FIELD_OP) {
+    p.bump_any();
+  } else {
+    p.error("expected object field operator (:, ::, :::, +:, +::, +:::)");
+  }
   expr(p);
   m.complete(
     p,
@@ -115,3 +121,6 @@ fn obj_value_field<S: TokenSource>(p: &mut Parser<S>) -> CompletedMarker {
     },
   )
 }
+
+// test root_ref
+// { local a = $, a::5, k::'test', assert $.a == 5, assert self.a == 5 }

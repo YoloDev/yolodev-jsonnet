@@ -1,0 +1,67 @@
+SOURCE_FILE@0..70
+  OBJECT_EXPR@0..69
+    L_CURLY@0..1 "{"
+    WHITESPACE@1..2 " "
+    LOCAL_OBJ_FIELD@2..13
+      LOCAL_KW@2..7 "local"
+      WHITESPACE@7..8 " "
+      VALUE_BIND@8..13
+        IDENT@8..9 "a"
+        WHITESPACE@9..10 " "
+        ASSIGN_OP@10..11 "="
+        WHITESPACE@11..12 " "
+        ROOT_EXPR@12..13
+          DOLLAR@12..13 "$"
+    COMMA@13..14 ","
+    WHITESPACE@14..15 " "
+    VALUE_OBJ_FIELD@15..19
+      IDENT_FIELD_NAME@15..16
+        IDENT@15..16 "a"
+      DOUBLE_COLON_OP@16..18 "::"
+      NUMBER_EXPR@18..19
+        NUMBER@18..19 "5"
+    COMMA@19..20 ","
+    WHITESPACE@20..21 " "
+    VALUE_OBJ_FIELD@21..30
+      IDENT_FIELD_NAME@21..22
+        IDENT@21..22 "k"
+      DOUBLE_COLON_OP@22..24 "::"
+      STRING_EXPR@24..30
+        STRING@24..30 "\'test\'"
+    COMMA@30..31 ","
+    WHITESPACE@31..32 " "
+    ASSERT_OBJ_FIELD@32..47
+      ASSERT_KW@32..38 "assert"
+      WHITESPACE@38..39 " "
+      COND@39..47
+        BINARY_EXPR@39..47
+          IDENT_FIELD_ACCESS_EXPR@39..42
+            ROOT_EXPR@39..40
+              DOLLAR@39..40 "$"
+            DOT@40..41 "."
+            IDENT@41..42 "a"
+          WHITESPACE@42..43 " "
+          EQUAL_OP@43..45 "=="
+          WHITESPACE@45..46 " "
+          NUMBER_EXPR@46..47
+            NUMBER@46..47 "5"
+    COMMA@47..48 ","
+    WHITESPACE@48..49 " "
+    ASSERT_OBJ_FIELD@49..67
+      ASSERT_KW@49..55 "assert"
+      WHITESPACE@55..56 " "
+      COND@56..67
+        BINARY_EXPR@56..67
+          IDENT_FIELD_ACCESS_EXPR@56..62
+            SELF_EXPR@56..60
+              SELF_KW@56..60 "self"
+            DOT@60..61 "."
+            IDENT@61..62 "a"
+          WHITESPACE@62..63 " "
+          EQUAL_OP@63..65 "=="
+          WHITESPACE@65..66 " "
+          NUMBER_EXPR@66..67
+            NUMBER@66..67 "5"
+    WHITESPACE@67..68 " "
+    R_CURLY@68..69 "}"
+  WHITESPACE@69..70 "\n"

@@ -1,0 +1,39 @@
+{
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "test format::tests::tmp",
+      "program": "${workspaceRoot}/target/debug/deps/jsonnet_core_lang-29cba298b0ba33f8",
+      "args": [
+        "format::tests::tmp",
+        "--exact",
+        "--nocapture",
+        "--all-features"
+      ],
+      "cwd": "${workspaceRoot}",
+      "sourceMap": {},
+      "sourceLanguages": ["rust"]
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in library 'jsonnet-core-lang'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--lib",
+          "--package=jsonnet-core-lang",
+          "--all-features"
+        ],
+        "filter": {
+          "name": "jsonnet-core-lang",
+          "kind": "lib"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

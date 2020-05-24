@@ -167,8 +167,8 @@ macro_rules! ast_op {
         match tok {
           $(
             $variant(it) => Some($name::$variant(Some(it.text_range()))),
-            _ => None,
           )*
+          _ => None,
         }
       }
 

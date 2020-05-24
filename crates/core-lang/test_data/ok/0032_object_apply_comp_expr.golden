@@ -1,0 +1,16 @@
+local CCompiler#2 = {};
+(CCompiler#2 + [
+    local x#5 = $arr#4[0.0];
+    x#5
+  ]:
+  local x#5 = $arr#4[0.0];
+    true
+  for $arr#4 in
+  local $arr#6 = ["1"];
+    std#1["join"]([],
+      std#1["makeArray"](std#1["length"]($arr#6),
+        function($i#7 = error "Parameter \'$i\' not bound")
+          local x#5 = $arr#6[$i#7];
+          [[x#5]],
+      ),
+    ))

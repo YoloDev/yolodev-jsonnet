@@ -114,10 +114,8 @@ impl<'a> BinderFrame<'a> {
   }
 
   pub(super) fn define_from(&mut self, ident: ast::Ident) -> Result<CoreIdent, String> {
-    self.define(
-      ident.syntax().text().clone(),
-      Some(ident.syntax().text_range()),
-    )
+    let syntax = ident.syntax();
+    self.define(syntax.text().clone(), Some(syntax.text_range()))
   }
 
   pub(super) fn bind(
@@ -136,10 +134,8 @@ impl<'a> BinderFrame<'a> {
   }
 
   pub(super) fn bind_from(&self, ident: ast::Ident) -> Result<CoreIdent, String> {
-    self.bind(
-      ident.syntax().text().clone(),
-      Some(ident.syntax().text_range()),
-    )
+    let syntax = ident.syntax();
+    self.bind(syntax.text().clone(), Some(syntax.text_range()))
   }
 
   pub(super) fn new_undef(&self) -> CoreIdent {

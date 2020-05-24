@@ -1,0 +1,6 @@
+local foo#2 =
+        function(a#4 = error "Parameter \'a\' not bound", b#5 = 2.0)
+          (a#4 + b#5),
+      bar#3 =
+        function(a#6 = 1.0, b#7 = 2.0) (foo#2(a#6, b#7) + foo#2(a#6, b#7));
+bar#3

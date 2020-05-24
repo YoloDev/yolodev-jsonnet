@@ -1,0 +1,7 @@
+local foo#2 =
+        {
+          ["bar"]:
+            local $#3 = self;
+            true,
+        };
+foo#2["bar"]

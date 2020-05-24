@@ -233,7 +233,7 @@ mod tests {
     }
   }
 
-  #[test_gen::test_golden("test_data/inline/ok/*.jsonnet")]
+  #[test_gen::test_golden("test_data/ok/*.jsonnet")]
   fn golden_ok(content: &str, _: &str) -> String {
     let syntax = SourceFile::parse(content);
     let (core, errors) = crate::desugar(syntax.tree());

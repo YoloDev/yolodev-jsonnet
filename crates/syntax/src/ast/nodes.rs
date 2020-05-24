@@ -404,6 +404,15 @@ ast_kind! {
   }
 }
 
+impl Bind {
+  pub fn name(&self) -> Option<Ident> {
+    match self {
+      Bind::Function(it) => it.name(),
+      Bind::Value(it) => it.name(),
+    }
+  }
+}
+
 ast_node! {
   /// Import expression.
   pub struct ImportExpr(IMPORT_EXPR) {
@@ -655,7 +664,7 @@ ast_node! {
   pub struct SuperComputedExpr(SUPER_COMPUTED_EXPR) {
     super_token: {super},
     l_brack_token: {'['},
-    expr: Expr,
+    expr: (COMPUTED_FIELD_NAME => Expr),
     r_brack_token: {']'},
   }
 }

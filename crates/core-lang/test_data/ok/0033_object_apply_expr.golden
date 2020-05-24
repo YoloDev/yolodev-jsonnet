@@ -1,0 +1,6 @@
+local CCompiler#2 = {};
+(CCompiler#2 + {
+    ["compiler"]:
+      local $#4 = self;
+      "gcc",
+  })
