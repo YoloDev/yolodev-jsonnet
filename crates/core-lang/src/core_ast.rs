@@ -204,6 +204,17 @@ impl CoreNode for CoreIdent {
   }
 }
 
+impl CoreIdent {
+  #[doc(hidden)]
+  pub unsafe fn new_unchecked(name: &str, id: u32) -> Self {
+    CoreIdent {
+      name: name.into(),
+      id: Some(NonZeroU32::new_unchecked(id)),
+      text_range: None,
+    }
+  }
+}
+
 #[derive(Debug, Clone)]
 pub(crate) enum LiteralToken {
   Null,

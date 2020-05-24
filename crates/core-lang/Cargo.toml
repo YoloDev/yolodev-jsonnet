@@ -8,9 +8,11 @@ edition = "2018"
 
 [dependencies]
 derive_more = "0.99"
+dtoa = { version = "0.4.5", optional = true }
 paste = "0.1"
 pretty = { version = "0.10", optional = true }
-dtoa = { version = "0.4.5", optional = true }
+proc-macro2 = { version = "1", optional = true }
+quote = { version = "1", optional = true }
 
 jsonnet-syntax = { version = "0.1.0", path = "../syntax" }
 
@@ -24,3 +26,4 @@ default = []
 
 # NOTE: display feature requires std
 display = ["pretty", "dtoa"]
+to-tokens = ["quote", "proc-macro2"]

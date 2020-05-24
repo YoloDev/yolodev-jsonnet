@@ -16,3 +16,6 @@ pico-args = "0.3"
 quote = "1"
 proc-macro2 = "1"
 anyhow = "1"
+
+jsonnet-core-lang = { version = "0.1.0", path = "../crates/core-lang", features = ["to-tokens"] }
+jsonnet-syntax = { version = "0.1.0", path = "../crates/syntax" }

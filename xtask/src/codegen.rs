@@ -1,12 +1,14 @@
 //! Module for generating code.
 
 mod gen_parser_tests;
+mod stdlib;
 
 use std::{mem, path::Path};
 
 use crate::{shell::fs2, Result};
 
 pub use self::gen_parser_tests::generate_parser_tests;
+pub use self::stdlib::generate_stdlib;
 
 const GRAMMAR_DIR: &str = "crates/parse/src/grammar";
 const OK_INLINE_TESTS_DIRS: &[&str] = &[
@@ -17,6 +19,9 @@ const ERR_INLINE_TESTS_DIRS: &[&str] = &[
   "crates/syntax/test_data/inline/err",
   "crates/lex/test_data/inline/err",
 ];
+
+const STDLIB_SOURCE: &str = "crates/stdlib/std.jsonnet";
+const STDLIB_OUT: &str = "crates/stdlib/src/stdlib.rs";
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Mode {
