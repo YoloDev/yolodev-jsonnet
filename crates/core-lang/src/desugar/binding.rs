@@ -90,6 +90,7 @@ pub(super) struct BinderFrame<'a> {
 impl<'a> Drop for BinderFrame<'a> {
   fn drop(&mut self) {
     if cfg!(debug_assertions) {
+      #[cfg(debug_assertions)]
       assert_eq!(self.binder.pop_frame(), self.start);
     } else {
       self.binder.pop_frame();
