@@ -14,7 +14,8 @@
 //! generating one big one).
 
 use crate::*;
-use proc_macro2::TokenStream;
+use alloc::collections::BTreeMap;
+use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote, ToTokens};
 
 impl ToTokens for CoreExpr {
@@ -22,12 +23,15 @@ impl ToTokens for CoreExpr {
     let mut context = Context {
       next_id: 0,
       fns: Vec::new(),
+      cached: BTreeMap::new(),
+      idents: BTreeMap::new(),
     };
 
     let end = self.gen_code(&mut context);
 
     let fns = context.fns;
     tokens.extend(quote! {{
+      #[allow(non_snake_case)]
       mod token_fns {
         use ::jsonnet_core_lang::*;
 
@@ -39,9 +43,51 @@ impl ToTokens for CoreExpr {
   }
 }
 
+#[derive(PartialEq, Eq, Hash, Ord, PartialOrd)]
+enum Symbol {
+  LiteralNull,
+  LiteralBool(bool),
+  LiteralString(String),
+  LiteralNumber(String),
+  SelfExpr,
+  SuperExpr,
+  Ident(u32),
+  MemberAccess(u32, String),
+}
+
+impl Symbol {
+  fn get_name(&self, ctx: &Context) -> Option<String> {
+    let name = match self {
+      Symbol::LiteralNull => "null".into(),
+      Symbol::LiteralBool(true) => "true".into(),
+      Symbol::LiteralBool(false) => "false".into(),
+      Symbol::LiteralString(_) => return None,
+      Symbol::LiteralNumber(n) => format!("number_{}", n).replace('.', "_"),
+      Symbol::SelfExpr => "self".into(),
+      Symbol::SuperExpr => "super".into(),
+      Symbol::Ident(n) => {
+        return ctx
+          .idents
+          .get(n)
+          .map(|id| format!("ident_{}_{}", id.replace("$", "genid_"), n))
+      }
+      Symbol::MemberAccess(n, mem) => {
+        return ctx
+          .idents
+          .get(n)
+          .map(|id| format!("member_{}_{}_{}", id.replace("$", "genid_"), n, mem))
+      }
+    };
+
+    Some(name)
+  }
+}
+
 struct Context {
   next_id: u32,
   fns: Vec<TokenStream>,
+  cached: BTreeMap<Symbol, Ident>,
+  idents: BTreeMap<u32, String>,
 }
 
 impl Context {
@@ -58,6 +104,10 @@ trait CodeGen {
 
   fn gen_code(&self, ctx: &mut Context) -> TokenStream {
     self.get_token_stream(ctx)
+  }
+
+  fn symbol(&self, _: &mut Context) -> Option<Symbol> {
+    None
   }
 }
 
@@ -135,19 +185,66 @@ impl CodeGen for CoreExpr {
     }
   }
 
+  fn symbol(&self, ctx: &mut Context) -> Option<Symbol> {
+    match self {
+      CoreExpr::Literal(it) => it.symbol(ctx),
+      CoreExpr::SelfValue(it) => it.symbol(ctx),
+      CoreExpr::Super(it) => it.symbol(ctx),
+      CoreExpr::Object(it) => it.symbol(ctx),
+      CoreExpr::ObjectComp(it) => it.symbol(ctx),
+      CoreExpr::Array(it) => it.symbol(ctx),
+      CoreExpr::MemberAccess(it) => it.symbol(ctx),
+      CoreExpr::Ident(it) => it.symbol(ctx),
+      CoreExpr::Local(it) => it.symbol(ctx),
+      CoreExpr::If(it) => it.symbol(ctx),
+      CoreExpr::Binary(it) => it.symbol(ctx),
+      CoreExpr::Unary(it) => it.symbol(ctx),
+      CoreExpr::Function(it) => it.symbol(ctx),
+      CoreExpr::Apply(it) => it.symbol(ctx),
+      CoreExpr::Error(it) => it.symbol(ctx),
+      CoreExpr::Import(it) => it.symbol(ctx),
+    }
+  }
+
   fn gen_code(&self, ctx: &mut Context) -> TokenStream {
-    let fn_name_str = format!("get_{:0width$}", ctx.next(), width = 6);
-    let fn_name = format_ident!("{}", fn_name_str);
-    let ret = Self::get_type_name();
-    let body = self.get_token_stream(ctx);
+    if let Some(sym) = self.symbol(ctx) {
+      match ctx.cached.get(&sym) {
+        Some(id) => quote! { #id() },
+        None => {
+          let num = ctx.next();
+          let fn_name_str = sym
+            .get_name(ctx)
+            .map(|n| format!("get_{}", n))
+            .unwrap_or_else(|| format!("get_{:0width$}", num, width = 6));
+          let fn_name = format_ident!("{}", fn_name_str);
+          let ret = Self::get_type_name();
+          let body = self.get_token_stream(ctx);
 
-    ctx.fns.push(quote! {
-      pub(super) fn #fn_name() -> #ret {
-        #body
+          ctx.fns.push(quote! {
+            pub(super) fn #fn_name() -> #ret {
+              #body
+            }
+          });
+
+          let ret = quote! { #fn_name() };
+          ctx.cached.insert(sym, fn_name);
+          ret
+        }
       }
-    });
+    } else {
+      let fn_name_str = format!("get_{:0width$}", ctx.next(), width = 6);
+      let fn_name = format_ident!("{}", fn_name_str);
+      let ret = Self::get_type_name();
+      let body = self.get_token_stream(ctx);
 
-    quote! { #fn_name() }
+      ctx.fns.push(quote! {
+        pub(super) fn #fn_name() -> #ret {
+          #body
+        }
+      });
+
+      quote! { #fn_name() }
+    }
   }
 }
 
@@ -165,6 +262,22 @@ impl CodeGen for LiteralCoreExpr {
       CoreLiteral::Number(it) => quote! { LiteralCoreExpr::new_number(#it) },
     }
   }
+
+  fn symbol(&self, _: &mut Context) -> Option<Symbol> {
+    match self.value() {
+      CoreLiteral::Null => Some(Symbol::LiteralNull),
+      CoreLiteral::Bool(b) => Some(Symbol::LiteralBool(b)),
+      CoreLiteral::String(s) => Some(Symbol::LiteralString(s.into())),
+      CoreLiteral::Number(f) => {
+        let mut buf = [b'\0'; 20];
+        let len = dtoa::write(&mut buf[..], f).unwrap();
+        let s = core::str::from_utf8(&buf[..len]).unwrap();
+        let s = String::from(s);
+
+        Some(Symbol::LiteralNumber(s))
+      }
+    }
+  }
 }
 
 impl CodeGen for SelfCoreExpr {
@@ -175,6 +288,10 @@ impl CodeGen for SelfCoreExpr {
   fn get_token_stream(&self, _: &mut Context) -> TokenStream {
     quote! { SelfCoreExpr::new() }
   }
+
+  fn symbol(&self, _: &mut Context) -> Option<Symbol> {
+    Some(Symbol::SelfExpr)
+  }
 }
 
 impl CodeGen for SuperCoreExpr {
@@ -184,6 +301,10 @@ impl CodeGen for SuperCoreExpr {
 
   fn get_token_stream(&self, _: &mut Context) -> TokenStream {
     quote! { SuperCoreExpr::new() }
+  }
+
+  fn symbol(&self, _: &mut Context) -> Option<Symbol> {
+    Some(Symbol::SuperExpr)
   }
 }
 
@@ -209,6 +330,17 @@ impl CodeGen for IdentCoreExpr {
     let ident = self.ident.gen_code(ctx);
 
     quote! { IdentCoreExpr::new(#ident) }
+  }
+
+  fn symbol(&self, ctx: &mut Context) -> Option<Symbol> {
+    self.ident.id.map(|id| {
+      ctx
+        .idents
+        .entry(id.get())
+        .or_insert_with(|| self.ident.name.to_string());
+
+      Symbol::Ident(id.get())
+    })
   }
 }
 
@@ -441,6 +573,17 @@ impl CodeGen for MemberAccessCoreExpr {
     let field_name = self.field_name.gen_code(ctx);
 
     quote! { MemberAccessCoreExpr::new(#target, #field_name) }
+  }
+  fn symbol(&self, ctx: &mut Context) -> Option<Symbol> {
+    let target = self.target.symbol(ctx)?;
+    let field_name = self.field_name.symbol(ctx)?;
+
+    match (&target, &field_name) {
+      (Symbol::Ident(target), Symbol::LiteralString(field_name)) => {
+        Some(Symbol::MemberAccess(*target, field_name.clone()))
+      }
+      _ => None,
+    }
   }
 }
 

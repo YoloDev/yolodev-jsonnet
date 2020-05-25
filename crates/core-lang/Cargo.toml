@@ -26,4 +26,4 @@ default = []
 
 # NOTE: display feature requires std
 display = ["pretty", "dtoa"]
-to-tokens = ["quote", "proc-macro2"]
+to-tokens = ["quote", "proc-macro2", "dtoa"]

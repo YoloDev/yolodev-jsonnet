@@ -26,8 +26,6 @@ pub fn generate_stdlib(mode: Mode) -> Result<()> {
 
   let generated = quote! {
     pub(crate) fn get() -> ::jsonnet_core_lang::CoreExpr {
-      use ::jsonnet_core_lang::*;
-
       #core_expr
     }
   };
