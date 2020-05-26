@@ -52,7 +52,7 @@ pub(super) fn lex_str_block<'a>(lex: &mut logos::Lexer<'a, RawToken>) -> StringB
         return 0;
       }
 
-      let next_char = self.rest().char_indices().skip_while(|(_, c)| f(*c)).next();
+      let next_char = self.rest().char_indices().find(|(_, c)| !f(*c));
 
       match next_char {
         None => {
@@ -117,7 +117,7 @@ pub(super) fn lex_str_block<'a>(lex: &mut logos::Lexer<'a, RawToken>) -> StringB
       .rest()
       .find("|||")
       .map(|v| v + 3)
-      .unwrap_or(ctx.rest().len());
+      .unwrap_or_else(|| ctx.rest().len());
     lex.bump(ctx.index + end_index);
   }
 

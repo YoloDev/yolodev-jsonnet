@@ -32,12 +32,6 @@ RUN apt-get update \
   # Rust specific
   && apt-get -y install lldb python3-minimal libpython3.7 \
   #
-  # Personal preference - probably not the place to put these, but oh whell
-  && apt-get -y install fish \
-  && curl -fsSL https://starship.rs/install.sh | bash -s -- -y \
-  && mkdir -p "/home/${USERNAME}/.config/fish" \
-  && echo "starship init fish | source" > "/home/${USERNAME}/.config/fish/config.fish" \
-  #
   # Clean up
   && apt-get autoremove -y \
   && apt-get clean -y \

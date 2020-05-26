@@ -49,7 +49,7 @@ impl<'a, T: Unescape<'a>> Iterator for Parts<'a, T> {
 
 /// Takes a contents of a string literal (without quotes) and produces a
 /// sequence of escaped characters or errors.
-pub fn unescape_str<'a>(literal_text: &'a str) -> Unescaped<'a, Normal> {
+pub fn unescape_str(literal_text: &str) -> Unescaped<Normal> {
   match State::from_normal_str(literal_text) {
     State::End => Unescaped::Original(literal_text),
     state => Unescaped::Parts(Parts {
@@ -161,12 +161,12 @@ impl<'a> Unescape<'a> for Normal {
 }
 
 #[inline]
-pub fn unescape_verbatim_single_quoted_str<'a>(literal_text: &'a str) -> Unescaped<'a, Verbatim> {
+pub fn unescape_verbatim_single_quoted_str(literal_text: &str) -> Unescaped<Verbatim> {
   unescape_verbatim_str(literal_text, QuoteKind::Single)
 }
 
 #[inline]
-pub fn unescape_verbatim_double_quoted_str<'a>(literal_text: &'a str) -> Unescaped<'a, Verbatim> {
+pub fn unescape_verbatim_double_quoted_str(literal_text: &str) -> Unescaped<Verbatim> {
   unescape_verbatim_str(literal_text, QuoteKind::Double)
 }
 
@@ -203,10 +203,7 @@ impl QuoteKind {
   }
 }
 
-pub fn unescape_verbatim_str<'a>(
-  literal_text: &'a str,
-  quote_kind: QuoteKind,
-) -> Unescaped<'a, Verbatim> {
+pub fn unescape_verbatim_str(literal_text: &str, quote_kind: QuoteKind) -> Unescaped<Verbatim> {
   match State::from_verbatim_str(literal_text, quote_kind) {
     State::End => Unescaped::Original(literal_text),
     state => Unescaped::Parts(Parts {
@@ -279,7 +276,7 @@ pub struct Block<'a> {
   state: BlockState<'a>,
 }
 
-pub fn unescape_block_str<'a>(literal_text: &'a str) -> Unescaped<'a, Block<'a>> {
+pub fn unescape_block_str(literal_text: &str) -> Unescaped<Block> {
   Unescaped::Parts(Parts {
     rest: literal_text,
     state: Block {
@@ -447,7 +444,7 @@ mod tests {
   use super::*;
 
   impl<'a, T: Unescape<'a>> Parts<'a, T> {
-    fn to_string(self) -> Result<String, EscapeError> {
+    fn into_string(self) -> Result<String, EscapeError> {
       let mut buf = String::with_capacity(self.rest.len() * 2);
       for part in self {
         match part {
@@ -462,10 +459,10 @@ mod tests {
   }
 
   impl<'a, T: Unescape<'a>> Unescaped<'a, T> {
-    fn to_string(self) -> Result<String, EscapeError> {
+    fn into_string(self) -> Result<String, EscapeError> {
       match self {
         Unescaped::Original(s) => Ok(s.to_owned()),
-        Unescaped::Parts(p) => p.to_string(),
+        Unescaped::Parts(p) => p.into_string(),
       }
     }
   }
@@ -490,7 +487,7 @@ mod tests {
     #[test_case("hi\\'" => "hi'" ; "with escaped single quote")]
     #[test_case("hi\\u0020" => "hi " ; "with escaped unicode sequence")]
     fn validate(s: &str) -> String {
-      unescape_str(s).to_string().unwrap()
+      unescape_str(s).into_string().unwrap()
     }
   }
 
@@ -519,7 +516,9 @@ mod tests {
     #[test_case("hi''" => "hi''" ; "with escaped single quote")]
     #[test_case("hi\\u0020" => "hi\\u0020" ; "with escaped unicode sequence")]
     fn validate_double_quoted(s: &str) -> String {
-      unescape_verbatim_double_quoted_str(s).to_string().unwrap()
+      unescape_verbatim_double_quoted_str(s)
+        .into_string()
+        .unwrap()
     }
 
     #[test_case("hi" => "hi" ; "simple")]
@@ -528,7 +527,9 @@ mod tests {
     #[test_case("hi''" => "hi'" ; "with escaped single quote")]
     #[test_case("hi\\u0020" => "hi\\u0020" ; "with escaped unicode sequence")]
     fn validate_single_quoted(s: &str) -> String {
-      unescape_verbatim_single_quoted_str(s).to_string().unwrap()
+      unescape_verbatim_single_quoted_str(s)
+        .into_string()
+        .unwrap()
     }
   }
 
@@ -541,7 +542,7 @@ mod tests {
     #[test_case("\n\t  \ttest\n\t  \t  more\n\t  \t|||\n\t  \t  foo\n" => "test\n  more\n|||\n  foo\n" ; "with internal delimeter")]
     #[test_case("\n\n  test\n\n\n    more\n  |||\n    foo\n" => "\ntest\n\n\n  more\n|||\n  foo\n" ; "multiple newlines after one another")]
     fn validate_block(s: &str) -> String {
-      unescape_block_str(s).to_string().unwrap()
+      unescape_block_str(s).into_string().unwrap()
     }
   }
 }
