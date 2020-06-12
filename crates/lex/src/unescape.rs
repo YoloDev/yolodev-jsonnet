@@ -1,7 +1,7 @@
 //! Utilities for validating string and turning them into
 //! values they represent.
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum EscapeError {
   EscapeSequenceUnterminated,
   InvalidHexEscapeSequence,
@@ -14,37 +14,40 @@ pub enum EscapeError {
   BlockMissingIndent,
 }
 
-pub trait Unescape<'a> {
-  fn next_part(&mut self, s: &'a str) -> Option<(&'a str, Part<'a>)>;
+mod private {
+  pub trait Sealed {}
+}
+
+pub trait Unescape<'a>: private::Sealed {
+  fn next_part(&mut self) -> Option<(u32, Part<'a>)>;
 }
 
 pub enum Unescaped<'a, T: Unescape<'a>> {
   Original(&'a str),
-  Parts(Parts<'a, T>),
+  Unescaped(T),
 }
 
-pub struct Parts<'a, T: Unescape<'a>> {
-  rest: &'a str,
-  state: T,
-}
-
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Part<'a> {
   Str(&'a str),
   Chr(char),
   Err(EscapeError),
 }
 
-impl<'a, T: Unescape<'a>> Iterator for Parts<'a, T> {
-  type Item = Part<'a>;
+macro_rules! impl_itor_for_unescape {
+  ($ty:ident) => {
+    impl<'a> Iterator for $ty<'a> {
+      type Item = Part<'a>;
 
-  fn next(&mut self) -> Option<Self::Item> {
-    if let Some((rest, part)) = self.state.next_part(self.rest) {
-      self.rest = rest;
-      Some(part)
-    } else {
-      None
+      fn next(&mut self) -> Option<Self::Item> {
+        if let Some((_len, part)) = self.next_part() {
+          Some(part)
+        } else {
+          None
+        }
+      }
     }
-  }
+  };
 }
 
 /// Takes a contents of a string literal (without quotes) and produces a
@@ -52,14 +55,15 @@ impl<'a, T: Unescape<'a>> Iterator for Parts<'a, T> {
 pub fn unescape_str(literal_text: &str) -> Unescaped<Normal> {
   match State::from_normal_str(literal_text) {
     State::End => Unescaped::Original(literal_text),
-    state => Unescaped::Parts(Parts {
+    state => Unescaped::Unescaped(Normal {
       rest: literal_text,
-      state: Normal { state },
+      state,
     }),
   }
 }
 
-pub struct Normal {
+pub struct Normal<'a> {
+  rest: &'a str,
   state: State,
 }
 
@@ -102,21 +106,26 @@ fn escaped_unicode_seq(s: &str) -> Part {
   Part::Chr(chr)
 }
 
-impl<'a> Unescape<'a> for Normal {
-  fn next_part(&mut self, s: &'a str) -> Option<(&'a str, Part<'a>)> {
+impl_itor_for_unescape!(Normal);
+impl<'a> private::Sealed for Normal<'a> {}
+impl<'a> Unescape<'a> for Normal<'a> {
+  fn next_part(&mut self) -> Option<(u32, Part<'a>)> {
+    let s = self.rest;
+
     if s.is_empty() {
       return None;
     }
 
     match self.state {
-      State::End => Some(("", Part::Str(s))),
+      State::End => Some((s.len() as u32, Part::Str(s))),
 
       State::Text(i) => {
         debug_assert_ne!(s.as_bytes()[0], b'\\');
 
         let (text, rest) = s.split_at(i);
         self.state = State::Escaped;
-        Some((rest, Part::Str(text)))
+        self.rest = rest;
+        Some((i as u32, Part::Str(text)))
       }
 
       State::Escaped => {
@@ -124,7 +133,8 @@ impl<'a> Unescape<'a> for Normal {
 
         if s.len() == 1 {
           self.state = State::End;
-          return Some(("", Part::Err(EscapeError::EscapeSequenceUnterminated)));
+          self.rest = "";
+          return Some((1, Part::Err(EscapeError::EscapeSequenceUnterminated)));
         }
 
         let escaped = s.as_bytes()[1];
@@ -152,9 +162,10 @@ impl<'a> Unescape<'a> for Normal {
           _ => Part::Err(EscapeError::InvalidEscapeSequence),
         };
 
-        let rest = &s[escaped_len + 1..];
-        self.state = State::from_normal_str(rest);
-        Some((rest, part))
+        let len = escaped_len + 1;
+        self.rest = &s[len..];
+        self.state = State::from_normal_str(self.rest);
+        Some((len as u32, part))
       }
     }
   }
@@ -194,6 +205,7 @@ impl QuoteKind {
   }
 
   #[inline]
+  #[allow(clippy::should_implement_trait)]
   pub fn from_str(s: &str) -> Option<Self> {
     match s {
       "'" => Some(QuoteKind::Single),
@@ -206,17 +218,16 @@ impl QuoteKind {
 pub fn unescape_verbatim_str(literal_text: &str, quote_kind: QuoteKind) -> Unescaped<Verbatim> {
   match State::from_verbatim_str(literal_text, quote_kind) {
     State::End => Unescaped::Original(literal_text),
-    state => Unescaped::Parts(Parts {
+    state => Unescaped::Unescaped(Verbatim {
       rest: literal_text,
-      state: Verbatim {
-        state,
-        quote: quote_kind,
-      },
+      state,
+      quote: quote_kind,
     }),
   }
 }
 
-pub struct Verbatim {
+pub struct Verbatim<'a> {
+  rest: &'a str,
   quote: QuoteKind,
   state: State,
 }
@@ -231,21 +242,26 @@ impl State {
   }
 }
 
-impl<'a> Unescape<'a> for Verbatim {
-  fn next_part(&mut self, s: &'a str) -> Option<(&'a str, Part<'a>)> {
+impl_itor_for_unescape!(Verbatim);
+impl<'a> private::Sealed for Verbatim<'a> {}
+impl<'a> Unescape<'a> for Verbatim<'a> {
+  fn next_part(&mut self) -> Option<(u32, Part<'a>)> {
+    let s = self.rest;
+
     if s.is_empty() {
       return None;
     }
 
     match self.state {
-      State::End => Some(("", Part::Str(s))),
+      State::End => Some((s.len() as u32, Part::Str(s))),
 
       State::Text(i) => {
         debug_assert_ne!(s.as_bytes()[0], self.quote.byte());
 
         let (text, rest) = s.split_at(i);
         self.state = State::Escaped;
-        Some((rest, Part::Str(text)))
+        self.rest = rest;
+        Some((i as u32, Part::Str(text)))
       }
 
       State::Escaped => {
@@ -260,7 +276,8 @@ impl<'a> Unescape<'a> for Verbatim {
         };
 
         self.state = State::from_verbatim_str(rest, self.quote);
-        Some((rest, part))
+        self.rest = rest;
+        Some((rest.len() as u32, part))
       }
     }
   }
@@ -273,15 +290,14 @@ enum BlockState<'a> {
 }
 
 pub struct Block<'a> {
+  rest: &'a str,
   state: BlockState<'a>,
 }
 
 pub fn unescape_block_str(literal_text: &str) -> Unescaped<Block> {
-  Unescaped::Parts(Parts {
+  Unescaped::Unescaped(Block {
     rest: literal_text,
-    state: Block {
-      state: BlockState::Start,
-    },
+    state: BlockState::Start,
   })
 }
 
@@ -365,8 +381,12 @@ impl<'a> Ctx<'a> {
   }
 }
 
+impl_itor_for_unescape!(Block);
+impl<'a> private::Sealed for Block<'a> {}
 impl<'a> Unescape<'a> for Block<'a> {
-  fn next_part(&mut self, s: &'a str) -> Option<(&'a str, Part<'a>)> {
+  fn next_part(&mut self) -> Option<(u32, Part<'a>)> {
+    let s = self.rest;
+
     if s.is_empty() {
       return None;
     }
@@ -384,8 +404,17 @@ impl<'a> Unescape<'a> for Block<'a> {
           // Skip \n
           match ctx.next() {
             Some('\n') => (),
-            None => return Some(("", Part::Err(EscapeError::UnexpectedEndOfString))),
-            Some(_) => return Some(("", Part::Err(EscapeError::BlockMissingNewline))),
+            None => {
+              self.rest = "";
+              return Some((
+                s.len() as u32,
+                Part::Err(EscapeError::UnexpectedEndOfString),
+              ));
+            }
+            Some(_) => {
+              self.rest = "";
+              return Some((s.len() as u32, Part::Err(EscapeError::BlockMissingNewline)));
+            }
           }
 
           // Process leading blank lines before calculating string block indent.
@@ -394,7 +423,8 @@ impl<'a> Unescape<'a> for Block<'a> {
           // included in the string output.
           if let Some(lines) = ctx.eat_while(|c| c == '\n') {
             self.state = BlockState::ComputeIdent;
-            return Some((ctx.0, Part::Str(lines)));
+            self.rest = ctx.0;
+            return Some(((s.len() - ctx.0.len()) as u32, Part::Str(lines)));
           }
 
           // If not; we want to immediately continue to compute the ident.
@@ -408,7 +438,8 @@ impl<'a> Unescape<'a> for Block<'a> {
 
           if num_whitespace == 0 {
             // Text block's first line must start with whitespace
-            return Some(("", Part::Err(EscapeError::BlockMissingIndent)));
+            self.rest = "";
+            return Some((s.len() as u32, Part::Err(EscapeError::BlockMissingIndent)));
           }
 
           self.state = BlockState::Line(str_block_indent);
@@ -420,7 +451,13 @@ impl<'a> Unescape<'a> for Block<'a> {
           ctx.skip(str_block_indent.len());
 
           let lines = match ctx.eat_lines() {
-            None => return Some(("", Part::Err(EscapeError::UnexpectedEndOfString))),
+            None => {
+              self.rest = "";
+              return Some((
+                s.len() as u32,
+                Part::Err(EscapeError::UnexpectedEndOfString),
+              ));
+            }
             Some(l) => l,
           };
 
@@ -428,11 +465,13 @@ impl<'a> Unescape<'a> for Block<'a> {
           let num_whitespace = check_whitespace(str_block_indent, ctx.0);
           if num_whitespace == 0 {
             // End of the text block
-            return Some(("", Part::Str(lines)));
+            self.rest = "";
+            return Some((s.len() as u32, Part::Str(lines)));
           }
 
           // keep the current state, but advance the string
-          return Some((ctx.0, Part::Str(lines)));
+          self.rest = ctx.0;
+          return Some(((s.len() - ctx.0.len()) as u32, Part::Str(lines)));
         }
       }
     }
@@ -443,9 +482,13 @@ impl<'a> Unescape<'a> for Block<'a> {
 mod tests {
   use super::*;
 
-  impl<'a, T: Unescape<'a>> Parts<'a, T> {
+  pub trait IntoString {
+    fn into_string(self) -> Result<String, EscapeError>;
+  }
+
+  impl<'a, T: Unescape<'a> + Iterator<Item = Part<'a>>> IntoString for T {
     fn into_string(self) -> Result<String, EscapeError> {
-      let mut buf = String::with_capacity(self.rest.len() * 2);
+      let mut buf = String::new();
       for part in self {
         match part {
           Part::Str(s) => buf.push_str(s),
@@ -458,11 +501,11 @@ mod tests {
     }
   }
 
-  impl<'a, T: Unescape<'a>> Unescaped<'a, T> {
+  impl<'a, T: Unescape<'a> + IntoString> Unescaped<'a, T> {
     fn into_string(self) -> Result<String, EscapeError> {
       match self {
         Unescaped::Original(s) => Ok(s.to_owned()),
-        Unescaped::Parts(p) => p.into_string(),
+        Unescaped::Unescaped(p) => p.into_string(),
       }
     }
   }
@@ -477,7 +520,7 @@ mod tests {
     fn original(s: &str) {
       match unescape_str(s) {
         Unescaped::Original(_) => (),
-        Unescaped::Parts(_) => panic!("expected original for string '{}'", s),
+        Unescaped::Unescaped(_) => panic!("expected original for string '{}'", s),
       }
     }
 
@@ -501,12 +544,12 @@ mod tests {
     fn original(s: &str) {
       match unescape_verbatim_double_quoted_str(s) {
         Unescaped::Original(_) => (),
-        Unescaped::Parts(_) => panic!("expected original for string '{}'", s),
+        Unescaped::Unescaped(_) => panic!("expected original for string '{}'", s),
       }
 
       match unescape_verbatim_single_quoted_str(s) {
         Unescaped::Original(_) => (),
-        Unescaped::Parts(_) => panic!("expected original for string '{}'", s),
+        Unescaped::Unescaped(_) => panic!("expected original for string '{}'", s),
       }
     }
 

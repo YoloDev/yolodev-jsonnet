@@ -282,7 +282,7 @@ impl String {
     let mut has_error = false;
     let parts = match unescape_str(text) {
       Unescaped::Original(s) => return Some(Cow::borrowed(s)),
-      Unescaped::Parts(p) => p,
+      Unescaped::Unescaped(p) => p,
     };
 
     let mut buf = alloc::string::String::with_capacity(text.len() + 2);
@@ -314,7 +314,7 @@ impl String {
     let mut has_error = false;
     let parts = match unescape_verbatim_str(text, quote) {
       Unescaped::Original(s) => return Some(Cow::borrowed(s)),
-      Unescaped::Parts(p) => p,
+      Unescaped::Unescaped(p) => p,
     };
 
     let mut buf = alloc::string::String::with_capacity(text.len() + 2);
@@ -342,7 +342,7 @@ impl String {
     let mut has_error = false;
     let parts = match unescape_block_str(text) {
       Unescaped::Original(s) => return Some(Cow::borrowed(s)),
-      Unescaped::Parts(p) => p,
+      Unescaped::Unescaped(p) => p,
     };
 
     let mut buf = alloc::string::String::with_capacity(text.len() + 2);
