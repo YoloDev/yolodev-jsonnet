@@ -1,6 +1,7 @@
 //! Module for generating code.
 
 mod gen_parser_tests;
+mod gen_syntax;
 mod stdlib;
 
 use std::{mem, path::Path};

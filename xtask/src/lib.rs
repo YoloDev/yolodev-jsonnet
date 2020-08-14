@@ -2,6 +2,7 @@
 //!
 //! See https://github.com/matklad/cargo-xtask/
 
+pub mod ast_src;
 pub mod codegen;
 pub mod pre_commit;
 pub mod shell;

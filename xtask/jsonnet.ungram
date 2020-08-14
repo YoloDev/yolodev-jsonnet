@@ -1,0 +1,8 @@
+/// ungrammar for jsonnet
+
+Expr =
+  'null'
+| 'true'
+| 'false'
+| 'self'
+| '$'
