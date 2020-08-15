@@ -9,9 +9,13 @@ use std::{mem, path::Path};
 use crate::{shell::fs2, Result};
 
 pub use self::gen_parser_tests::generate_parser_tests;
+pub use self::gen_syntax::generate_syntax;
 pub use self::stdlib::generate_stdlib;
 
 const GRAMMAR_DIR: &str = "crates/parse/src/grammar";
+// const SYNTAX_AST_DIR: &str = "crates/syntax/src/ast";
+const AST_TOKENS: &str = "crates/syntax/src/ast/tokens/gen.rs";
+
 const OK_INLINE_TESTS_DIRS: &[&str] = &[
   "crates/syntax/test_data/inline/ok",
   "crates/lex/test_data/inline/ok",

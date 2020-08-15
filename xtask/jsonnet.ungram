@@ -1,8 +1,60 @@
 /// ungrammar for jsonnet
 
 Expr =
-  'null'
-| 'true'
-| 'false'
-| 'self'
-| '$'
+  NullExpr
+| TrueExpr
+| FalseExpr
+| SelfExpr
+| RootExpr
+| StringExpr
+| NumberExpr
+| ObjectExpr
+// | ObjectCompExpr
+// | ArrayExpr
+// | ArrayCompExpr
+// | IdentFieldExpr
+// | ComputedFieldExpr
+// | SliceExpr
+// | SuperIdentFieldExpr
+// | SuperComputedFieldExpr
+// | CallExpr
+// | IdentExpr
+// | LocalExpr
+// | IfExpr
+// | BinaryExpr
+// | UnaryExpr
+// | ObjectCallExpr
+// | FunctionExpr
+// | AssertExpr
+// | ImportExpr
+// | ImportStrExpr
+// | ErrorExpr
+// | InSuperExpr
+
+NullExpr = 'null'
+
+TrueExpr = 'true'
+
+FalseExpr = 'false'
+
+SelfExpr = 'self'
+
+RootExpr = 'root'
+
+StringExpr = 'string'
+
+NumberExpr = 'number'
+
+IdentExpr = 'ident'
+
+ObjectExpr = '{' fields:(ObjectField (',' ObjectField)* ','?)? '}'
+
+ObjectField =
+  AssertObjField
+| FunctionObjField
+| LocalObjField
+| ValueObjField
+
+AssertObjField = 'assert' cond:Expr (':' message:Expr)?
+
+FunctionObjField = name:ObjFieldName params:ParamList

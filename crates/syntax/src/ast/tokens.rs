@@ -6,43 +6,8 @@ use crate::{
 use beef::lean::Cow;
 use core::convert::TryFrom;
 
-macro_rules! define_token {
-  ($name:ident, $kind:ident) => {
-    #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-    pub struct $name {
-      pub(crate) syntax: SyntaxToken,
-    }
-
-    impl core::fmt::Display for $name {
-      fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        core::fmt::Display::fmt(&self.syntax, f)
-      }
-    }
-
-    impl AstToken for $name {
-      fn can_cast(kind: SyntaxKind) -> bool {
-        kind == $kind
-      }
-
-      fn cast(syntax: SyntaxToken) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-          Some(Self { syntax })
-        } else {
-          None
-        }
-      }
-
-      fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-      }
-    }
-  };
-}
-
-define_token!(Whitespace, WHITESPACE);
-define_token!(Comment, COMMENT);
-define_token!(Ident, IDENT);
-define_token!(Number, NUMBER);
+mod gen;
+pub use gen::{Comment, Ident, Number, Whitespace};
 
 impl Ident {
   pub fn name(&self) -> &str {
@@ -178,7 +143,7 @@ pub struct QuoteOffsets {
 }
 
 impl QuoteOffsets {
-  fn from_single_char_quote<'a>(literal: &'a str) -> Option<QuoteOffsets> {
+  fn from_single_char_quote(literal: &str) -> Option<QuoteOffsets> {
     let mut start = TextSize::from(0);
     let quote = {
       let mut chars = literal.chars();
@@ -219,7 +184,7 @@ impl QuoteOffsets {
     Some(res)
   }
 
-  fn from_multi_char_quote<'a>(literal: &'a str) -> Option<QuoteOffsets> {
+  fn from_multi_char_quote(literal: &str) -> Option<QuoteOffsets> {
     let quote = "|||";
     let left_quote = literal.find(quote)?;
     let right_quote = literal.rfind(quote)?;
