@@ -1,0 +1,12 @@
+[package]
+name = "jsonnet-eval"
+version = "0.1.0"
+authors = ["Aleksander Heintz <alxandr@alxandr.me>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+gc = { version = "0.3", features = ["derive", "nightly"] }
+
+jsonnet-core-lang = { version = "0.1.0", path = "../core-lang" }
