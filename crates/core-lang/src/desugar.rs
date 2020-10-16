@@ -23,15 +23,15 @@ trait Desugar<T: 'static, TCtx: ?Sized> {
   fn desugar(self, errors: &mut Vec<Error>, binder: &mut BinderFrame, ctx: &TCtx) -> T;
 }
 
-const ERR: SmolStr = SmolStr::new_inline_from_ascii(4, b"$err");
-const ROOT: SmolStr = SmolStr::new_inline_from_ascii(1, b"$");
+const ERR: SmolStr = SmolStr::new_inline("$err");
+const ROOT: SmolStr = SmolStr::new_inline("$");
 
 fn call_std_function(
   binder: &mut BinderFrame,
   name: &'static str,
   args: Vec<CoreExpr>,
 ) -> CoreExpr {
-  const STD: SmolStr = SmolStr::new_inline_from_ascii(3, b"std");
+  const STD: SmolStr = SmolStr::new_inline("std");
 
   let std = IdentCoreExpr::new(binder.bind(STD.clone(), None).unwrap());
   let fn_expr = MemberAccessCoreExpr::new(std, LiteralCoreExpr::new_str(name));
@@ -53,8 +53,8 @@ fn desugar_arrcomp(
   mut specs: Peekable<AstChildren<ast::CompSpec>>,
   ctx: &ExprCtx,
 ) -> CoreExpr {
-  const ARR: SmolStr = SmolStr::new_inline_from_ascii(4, b"$arr");
-  const I: SmolStr = SmolStr::new_inline_from_ascii(2, b"$i");
+  const ARR: SmolStr = SmolStr::new_inline("$arr");
+  const I: SmolStr = SmolStr::new_inline("$i");
 
   debug_assert!(specs.peek().is_some());
 
@@ -284,8 +284,8 @@ impl Desugar<CoreExpr, ExprCtx> for ast::ObjectExpr {
 
 impl Desugar<CoreExpr, ExprCtx> for ast::ObjectCompExpr {
   fn desugar(self, errors: &mut Vec<Error>, binder: &mut BinderFrame, ctx: &ExprCtx) -> CoreExpr {
-    const ARR: SmolStr = SmolStr::new_inline_from_ascii(4, b"$arr");
-    //const I: SmolStr = SmolStr::new_inline_from_ascii(2, b"$i");
+    const ARR: SmolStr = SmolStr::new_inline("$arr");
+    //const I: SmolStr = SmolStr::new_inline("$i");
 
     let text_range = self.syntax().text_range();
     let mut binder = binder.frame();

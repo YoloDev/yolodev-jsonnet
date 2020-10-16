@@ -2,8 +2,8 @@ use crate::{CoreIdent, TextRange};
 use core::num::NonZeroU32;
 use jsonnet_syntax::{ast, AstToken, SmolStr};
 
-const STD: SmolStr = SmolStr::new_inline_from_ascii(3, b"std");
-const UNDEF: SmolStr = SmolStr::new_inline_from_ascii(6, b"$error");
+const STD: SmolStr = SmolStr::new_inline("std");
+const UNDEF: SmolStr = SmolStr::new_inline("$error");
 
 struct Binding(SmolStr, NonZeroU32);
 
