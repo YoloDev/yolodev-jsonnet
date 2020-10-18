@@ -1,90 +1,95 @@
-use gc::{Finalize, Gc, GcCell, Trace};
-use jsonnet_core_lang as lang;
-use std::rc::Rc;
+// use gc::{Finalize, Gc, GcCell, Trace};
+// use jsonnet_core_lang as lang;
+// use std::rc::Rc;
 
 mod expr;
 mod fun;
+mod helpers;
+mod lazy;
+mod val;
 
-pub enum ValueKind {
-  Null,
-  Bool,
-  String,
-  Number,
-  Object,
-  Array,
-  Function,
-}
+pub use val::{StringValue, Value};
 
-#[derive(Debug)]
-enum Value {
-  Null,
-  Bool(bool),
-  String(Rc<str>),
-  Double(f64),
-  Object(Object),
-  Array(Array),
-  Function(Function),
-}
+// pub enum ValueKind {
+//   Null,
+//   Bool,
+//   String,
+//   Number,
+//   Object,
+//   Array,
+//   Function,
+// }
 
-unsafe impl Trace for Value {
-  gc::custom_trace! {this, {
-    match this {
-      Value::Object(o) => mark(o),
-      Value::Array(a) => mark(a),
-      Value::Function(f) => mark(f),
-      _ => (),
-    }
-  }}
-}
+// #[derive(Debug)]
+// enum Value {
+//   Null,
+//   Bool(bool),
+//   String(Rc<str>),
+//   Double(f64),
+//   Object(Object),
+//   Array(Array),
+//   Function(Function),
+// }
 
-#[derive(Debug, Trace)]
-struct ObjectProperty {
-  name: GcValue,
-  value: GcValue,
-}
+// unsafe impl Trace for Value {
+//   gc::custom_trace! {this, {
+//     match this {
+//       Value::Object(o) => mark(o),
+//       Value::Array(a) => mark(a),
+//       Value::Function(f) => mark(f),
+//       _ => (),
+//     }
+//   }}
+// }
 
-#[derive(Debug, Trace)]
-struct Object {
-  properties: Vec<GcValue>,
-}
+// #[derive(Debug, Trace)]
+// struct ObjectProperty {
+//   name: GcValue,
+//   value: GcValue,
+// }
 
-#[derive(Debug, Trace)]
-struct Array {
-  items: Vec<GcValue>,
-}
+// #[derive(Debug, Trace)]
+// struct Object {
+//   properties: Vec<GcValue>,
+// }
 
-#[derive(Debug, Trace)]
-struct Function;
+// #[derive(Debug, Trace)]
+// struct Array {
+//   items: Vec<GcValue>,
+// }
 
-#[derive(Debug, Trace)]
-enum LazyValue {
-  Lazy(Gc<dyn Expr>),
-  Realized(Gc<Value>),
-}
+// #[derive(Debug, Trace)]
+// struct Function;
 
-impl LazyValue {
-  fn get(&mut self) -> &Value {
-    match self {
-      LazyValue::Realized(ref v) => &*v,
-      LazyValue::Lazy(ref e) => {
-        let value = Gc::new(e.eval());
-        *self = LazyValue::Realized(value);
+// #[derive(Debug, Trace)]
+// enum LazyValue {
+//   Lazy(Gc<dyn Expr>),
+//   Realized(Gc<Value>),
+// }
 
-        if let LazyValue::Realized(v) = self {
-          &*v
-        } else {
-          unreachable!()
-        }
-      }
-    }
-  }
-}
+// impl LazyValue {
+//   fn get(&mut self) -> &Value {
+//     match self {
+//       LazyValue::Realized(ref v) => &*v,
+//       LazyValue::Lazy(ref e) => {
+//         let value = Gc::new(e.eval());
+//         *self = LazyValue::Realized(value);
 
-trait Expr: core::fmt::Debug + Trace + Finalize {
-  fn eval(&self) -> Value;
-}
+//         if let LazyValue::Realized(v) = self {
+//           &*v
+//         } else {
+//           unreachable!()
+//         }
+//       }
+//     }
+//   }
+// }
 
-type GcValue = Gc<GcCell<LazyValue>>;
+// trait Expr: core::fmt::Debug + Trace + Finalize {
+//   fn eval(&self) -> Value;
+// }
+
+// type GcValue = Gc<GcCell<LazyValue>>;
 
 // #[derive(Debug, Trace, Finalize)]
 // pub enum Value {}

@@ -49,10 +49,22 @@ impl IntoCoreExpr for Box<CoreExpr> {
 
 macro_rules! ast_ctor_param {
   (impl Box<CoreExpr>) => {impl IntoCoreExpr};
+  (return Box<CoreExpr>) => {&CoreExpr};
+  ($this:ident $fld:ident => Box<CoreExpr>) => {&$this.$fld};
   ($arg:ident Box<CoreExpr>) => {$arg.into_boxed_expr()};
   (impl Vec<$t:ty>) => {impl IntoIterator<Item = $t>};
+  (return Vec<$t:ty>) => {&[$t]};
+  ($this:ident $fld:ident => Vec<$t:ty>) => {&$this.$fld};
   ($arg:ident Vec<$t:ty>) => {$arg.into_iter().collect()};
+  (return bool) => {bool};
+  ($this:ident $fld:ident => bool) => {$this.$fld};
+  (return SmolStr) => {&str};
+  ($this:ident $fld:ident => SmolStr) => {&$this.$fld};
+  (return String) => {&str};
+  ($this:ident $fld:ident => String) => {&$this.$fld};
   (impl $t:ty) => {impl Into<$t>};
+  (return $t:ty) => {&$t};
+  ($this:ident $fld:ident => $t:ty) => {&$this.$fld};
   ($arg:ident $t:ty) => {$arg.into()};
 }
 
@@ -110,6 +122,13 @@ macro_rules! ast_node {
         self.text_range = Some(text_range);
         self
       }
+
+      $(
+        #[inline]
+        pub fn $fld(&self) -> ast_ctor_param!(return $($t)*) {
+          ast_ctor_param!(self $fld => $($t)*)
+        }
+      )*
     }
 
     impl private::Sealed for $name {}
@@ -213,10 +232,18 @@ impl CoreIdent {
       text_range: None,
     }
   }
+
+  pub fn id(&self) -> Option<NonZeroU32> {
+    self.id
+  }
+
+  pub fn name(&self) -> &str {
+    &self.name
+  }
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum LiteralToken {
+pub enum LiteralToken {
   Null,
   True,
   False,
@@ -236,8 +263,8 @@ pub enum CoreLiteral<'a> {
 /// Literal expression
 #[derive(Debug, Clone)]
 pub struct LiteralCoreExpr {
-  pub(crate) text_range: Option<TextRange>,
-  pub(crate) token: LiteralToken,
+  pub text_range: Option<TextRange>,
+  pub token: LiteralToken,
 }
 
 impl private::Sealed for LiteralCoreExpr {}
