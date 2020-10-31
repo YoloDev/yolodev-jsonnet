@@ -271,8 +271,7 @@ impl PartialValue {
   }
 
   pub(crate) fn assign(self, value: impl LateBound + 'static) -> PartialValue {
-    *self.0.deref().borrow_mut() =
-      PartialValueInner::Partial(LateBoundValue::from_latebound(value));
+    *self.0.deref().borrow_mut() = PartialValueInner::Partial(LateBoundValue::new(value));
 
     self
   }

@@ -2,12 +2,14 @@ use std::{
   collections::HashMap,
   fmt::{self, Debug},
   num::NonZeroU32,
+  path::PathBuf,
+  rc::Rc,
 };
 
-use gc::{Gc, GcCell, Trace};
+use gc::{unsafe_empty_trace, Gc, GcCell, Trace};
 use jsonnet_core_lang::TextRange;
 
-use crate::{val::PartialValue, Value};
+use crate::{engine::Engine, val::PartialValue, Value};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Location(Option<TextRange>);
@@ -97,8 +99,17 @@ impl From<bool> for LazyValue {
   }
 }
 
+#[derive(Clone)]
+struct EngineWrapper(Rc<dyn Engine>);
+
+unsafe impl Trace for EngineWrapper {
+  unsafe_empty_trace!();
+}
+
 #[derive(Trace, Clone)]
 pub(crate) struct EvalContext {
+  pub(crate) engine: EngineWrapper,
+  pub(crate) source: Gc<PathBuf>,
   pub(crate) super_value: Option<LazyValue>,
   pub(crate) args: HashMap<NonZeroU32, LazyValue>,
 }
@@ -107,7 +118,18 @@ impl EvalContext {
   pub(crate) fn with_super(&self, value: LazyValue) -> Self {
     EvalContext {
       super_value: Some(value),
+      source: self.source.clone(),
       args: self.args.clone(),
+      engine: self.engine.clone(),
+    }
+  }
+
+  pub(crate) fn with_source(&self, source: Gc<PathBuf>) -> Self {
+    EvalContext {
+      source: source,
+      super_value: self.super_value.clone(),
+      args: self.args.clone(),
+      engine: self.engine.clone(),
     }
   }
 
@@ -146,7 +168,7 @@ pub(crate) struct LateBoundValue(Gc<dyn LateBound>);
 
 impl LateBoundValue {
   #[inline]
-  pub(crate) fn from_latebound(value: impl LateBound + 'static) -> Self {
+  pub(crate) fn new(value: impl LateBound + 'static) -> Self {
     Self(Gc::new(value))
   }
 

@@ -1,6 +1,7 @@
 use std::{collections::HashMap, num::NonZeroU32};
 
 use crate::{
+  engine::Engine,
   helpers::ReplaceWithDefault,
   lazy::{EvalContext, EvalError, Expression, LateBound, LateBoundValue, LazyValue, Location},
   val::Array,
@@ -9,7 +10,7 @@ use crate::{
   val::PartialValue,
   StringValue, Value,
 };
-use gc::{Gc, GcCell, Trace};
+use gc::{Gc, Trace};
 use jsonnet_core_lang::*;
 
 #[derive(Trace, Debug)]
@@ -22,7 +23,7 @@ impl LateBound for UnsetValue {
 
   #[inline]
   fn into_partial(self) -> PartialValue {
-    LateBoundValue::from_latebound(self).into()
+    LateBoundValue::new(self).into()
   }
 }
 
@@ -105,7 +106,7 @@ impl LateBound for SuperPartial {
   }
 
   fn into_partial(self) -> PartialValue {
-    LateBoundValue::from_latebound(self).into()
+    LateBoundValue::new(self).into()
   }
 }
 
@@ -300,7 +301,7 @@ impl LateBound for ObjectPartialExpr {
       })
       .into()
     } else {
-      LateBoundValue::from_latebound(self).into()
+      LateBoundValue::new(self).into()
     }
   }
 }
@@ -392,7 +393,7 @@ impl LateBound for PartialArrayExpr {
         values: Gc::new(values),
       })
       .into(),
-      None => LateBoundValue::from_latebound(self).into(),
+      None => LateBoundValue::new(self).into(),
     }
   }
 }
@@ -445,7 +446,7 @@ impl LateBound for PartialMemberAccess {
   fn into_partial(self) -> PartialValue {
     match (self.target.as_value(), self.field.as_value()) {
       (Some(target), Some(field)) => LazyValue::new(LazyMemberAccess { target, field }).into(),
-      _ => LateBoundValue::from_latebound(self).into(),
+      _ => LateBoundValue::new(self).into(),
     }
   }
 }
@@ -527,7 +528,7 @@ impl LateBound for PartialIfExpr {
         if_false,
       })
       .into(),
-      _ => LateBoundValue::from_latebound(self).into(),
+      _ => LateBoundValue::new(self).into(),
     }
   }
 }
@@ -646,7 +647,7 @@ impl LateBound for PartialBinaryExpr {
       }
     }
 
-    LateBoundValue::from_latebound(self).into()
+    LateBoundValue::new(self).into()
   }
 }
 
@@ -714,7 +715,7 @@ impl LateBound for PartialUnaryExpr {
         op: self.op.clone(),
       })
       .into(),
-      _ => LateBoundValue::from_latebound(self).into(),
+      _ => LateBoundValue::new(self).into(),
     }
   }
 }
@@ -769,7 +770,7 @@ impl LateBound for FunctionArgument {
   }
 
   fn into_partial(self) -> PartialValue {
-    LateBoundValue::from_latebound(self).into()
+    LateBoundValue::new(self).into()
   }
 }
 
@@ -809,10 +810,7 @@ impl PartialFunctionParam {
       )),
       Some(id) => {
         let name = name.name();
-        binder.define(
-          id,
-          LateBoundValue::from_latebound(FunctionArgument(id)).into(),
-        );
+        binder.define(id, LateBoundValue::new(FunctionArgument(id)).into());
         Ok(PartialFunctionParam {
           name: name.into(),
           id,
@@ -844,7 +842,7 @@ impl LateBound for PartialFunctionExpr {
         body: self.body.clone(),
       })
       .into(),
-      None => LateBoundValue::from_latebound(self).into(),
+      None => LateBoundValue::new(self).into(),
     }
   }
 }
@@ -937,7 +935,7 @@ impl LateBound for PartialApplyExpr {
   fn into_partial(self) -> PartialValue {
     match self.as_lazy() {
       Some(lazy) => LazyValue::new(lazy).into(),
-      _ => LateBoundValue::from_latebound(self).into(),
+      _ => LateBoundValue::new(self).into(),
     }
   }
 }
@@ -952,7 +950,7 @@ impl LateBound for PartialTailStrictApplyExpr {
   fn into_partial(self) -> PartialValue {
     match self.0.as_lazy() {
       Some(lazy) => LazyValue::new(LazyTailStrictApplyExpr(lazy)).into(),
-      _ => LateBoundValue::from_latebound(self).into(),
+      _ => LateBoundValue::new(self).into(),
     }
   }
 }
@@ -1020,7 +1018,7 @@ impl LateBound for PartialErrorExpr {
   fn into_partial(self) -> PartialValue {
     match self.value.as_value() {
       Some(value) => LazyValue::new(LazyErrorExpr { value }).into(),
-      None => LateBoundValue::from_latebound(self).into(),
+      None => LateBoundValue::new(self).into(),
     }
   }
 }
@@ -1041,11 +1039,10 @@ impl ToValue for ErrorCoreExpr {
 }
 
 #[derive(Trace, Debug)]
-struct LazyImportExpr {
+struct PartialImportExpr {
   file: StringValue,
   kind: ImportKind,
 }
-
 #[derive(Trace, Debug, Clone)]
 pub enum ImportKind {
   /// Import file as jsonnet file (and evaluate it)
@@ -1064,17 +1061,31 @@ impl From<&CoreImportKind> for ImportKind {
   }
 }
 
-impl Expression for LazyImportExpr {
-  fn eval(&self, cell: &LazyValue) -> Result<Gc<Value>, EvalError> {
-    todo!()
+impl LateBound for PartialImportExpr {
+  fn eval(&self, ctx: EvalContext) -> Result<LazyValue, EvalError> {
+    match &self.kind {
+      ImportKind::String => {
+        let source = ctx.engine.import_str(&self.file)?;
+        Ok(Value::String(StringValue::from(source.as_ref())).into())
+      }
+      ImportKind::Jsonnet => {
+        let value = ctx.engine.import_jsonnet(&self.file)?;
+        Ok(value.into())
+      }
+    }
+  }
+
+  #[inline]
+  fn into_partial(self) -> PartialValue {
+    LateBoundValue::new(self).into()
   }
 }
 
 impl ToValue for ImportCoreExpr {
-  fn to_value(&self, binder: &mut Binder) -> Result<PartialValue, BindingError> {
+  fn to_value(&self, _: &mut Binder) -> Result<PartialValue, BindingError> {
     let file = StringValue::from(self.file());
     let kind = ImportKind::from(self.kind());
-    Ok(LazyValue::new(LazyImportExpr { file, kind }).into())
+    Ok(LateBoundValue::new(PartialImportExpr { file, kind }).into())
   }
 }
 

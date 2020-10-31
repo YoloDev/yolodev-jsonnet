@@ -1,7 +1,9 @@
+#![feature(arbitrary_self_types)]
 // use gc::{Finalize, Gc, GcCell, Trace};
 // use jsonnet_core_lang as lang;
 // use std::rc::Rc;
 
+mod engine;
 mod expr;
 mod fun;
 mod helpers;
