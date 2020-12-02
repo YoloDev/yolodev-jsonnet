@@ -10,3 +10,4 @@ edition = "2018"
 gc = { version = "0.3", features = ["derive", "nightly"] }
 
 jsonnet-core-lang = { version = "0.1.0", path = "../core-lang" }
+jsonnet-syntax = { version = "0.1.0", path = "../syntax" }

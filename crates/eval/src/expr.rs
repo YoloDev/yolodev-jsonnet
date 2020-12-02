@@ -1,7 +1,6 @@
 use std::{collections::HashMap, num::NonZeroU32};
 
 use crate::{
-  engine::Engine,
   helpers::ReplaceWithDefault,
   lazy::{EvalContext, EvalError, Expression, LateBound, LateBoundValue, LazyValue, Location},
   val::Array,
@@ -28,8 +27,8 @@ impl LateBound for UnsetValue {
 }
 
 pub struct BindingError {
-  message: Box<str>,
-  location: Location,
+  pub(crate) message: Box<str>,
+  pub(crate) location: Location,
 }
 
 impl BindingError {
@@ -49,6 +48,13 @@ struct Binder {
 }
 
 impl Binder {
+  fn new() -> Binder {
+    Binder {
+      self_value: None,
+      locals: HashMap::new(),
+    }
+  }
+
   fn get(&self, ident: &CoreIdent) -> Result<PartialValue, BindingError> {
     match ident.id() {
       None => Err(BindingError::new("Undefined local", ident.range())),
@@ -576,7 +582,7 @@ struct LazyBinaryExpr {
 }
 
 #[derive(Trace, Debug, Eq, PartialEq, Clone)]
-enum BinaryOp {
+pub enum BinaryOp {
   Mult,
   Div,
   Plus,
@@ -653,7 +659,32 @@ impl LateBound for PartialBinaryExpr {
 
 impl Expression for LazyBinaryExpr {
   fn eval(&self, cell: &LazyValue) -> Result<Gc<Value>, EvalError> {
-    todo!()
+    let lhs = self.lhs.force()?;
+    let rhs = self.rhs.force()?;
+
+    match &self.op {
+      BinaryOp::Mult => {
+        ensure_types_match(lhs, rhs, "binary operator *")?;
+        let lhs = lhs.ensure_double()?;
+        let rhs = rhs.ensure_double()?;
+        let result = lhs * rhs;
+        Ok(cell.update(Gc::new(Value::Double(result))))
+      }
+      BinaryOp::Div => todo!(),
+      BinaryOp::Plus => todo!(),
+      BinaryOp::Minus => todo!(),
+      BinaryOp::ShiftL => todo!(),
+      BinaryOp::ShiftR => todo!(),
+      BinaryOp::GreaterThan => todo!(),
+      BinaryOp::GreaterThanOrEquals => todo!(),
+      BinaryOp::LessThan => todo!(),
+      BinaryOp::LessThanOrEquals => todo!(),
+      BinaryOp::BitAnd => todo!(),
+      BinaryOp::BitXor => todo!(),
+      BinaryOp::BitOr => todo!(),
+      BinaryOp::And => todo!(),
+      BinaryOp::Or => todo!(),
+    }
   }
 }
 
@@ -680,7 +711,7 @@ struct LazyUnaryExpr {
 }
 
 #[derive(Trace, Debug, Eq, PartialEq, Clone)]
-enum UnaryOp {
+pub enum UnaryOp {
   Plus,
   Minus,
   Not,
@@ -1063,15 +1094,13 @@ impl From<&CoreImportKind> for ImportKind {
 
 impl LateBound for PartialImportExpr {
   fn eval(&self, ctx: EvalContext) -> Result<LazyValue, EvalError> {
+    let file = ctx
+      .engine
+      .import(self.file.as_ref().as_ref(), &ctx.source)?;
+
     match &self.kind {
-      ImportKind::String => {
-        let source = ctx.engine.import_str(&self.file)?;
-        Ok(Value::String(StringValue::from(source.as_ref())).into())
-      }
-      ImportKind::Jsonnet => {
-        let value = ctx.engine.import_jsonnet(&self.file)?;
-        Ok(value.into())
-      }
+      ImportKind::String => Ok(Value::String(StringValue::from(file.content.as_ref())).into()),
+      ImportKind::Jsonnet => ctx.engine.eval_file(file, ctx.clone()),
     }
   }
 
@@ -1116,4 +1145,9 @@ impl ToValue for CoreExpr {
       CoreExpr::Import(e) => e.to_value(binder),
     }
   }
+}
+
+pub(crate) fn bind_expr(expr: &CoreExpr) -> Result<PartialValue, BindingError> {
+  let mut binder = Binder::new();
+  expr.to_value(&mut binder)
 }

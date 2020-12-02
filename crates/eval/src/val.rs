@@ -62,7 +62,7 @@ pub enum ValueKind {
   Function,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Value {
   Null,
   Bool(bool),
@@ -189,7 +189,7 @@ pub struct ObjectProperty {
   pub(crate) visible: bool,
 }
 
-#[derive(Debug, Trace)]
+#[derive(Debug, Trace, Clone)]
 pub struct Object {
   pub properties: Gc<Vec<ObjectProperty>>,
 }
@@ -220,12 +220,12 @@ impl Object {
   }
 }
 
-#[derive(Debug, Trace)]
+#[derive(Debug, Trace, Clone)]
 pub struct Array {
   pub(crate) items: Gc<Vec<LazyValue>>,
 }
 
-#[derive(Debug, Trace)]
+#[derive(Debug, Trace, Clone)]
 pub struct Function;
 
 #[derive(Trace, Debug, Clone)]

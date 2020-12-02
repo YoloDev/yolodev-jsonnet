@@ -3,13 +3,12 @@ use std::{
   fmt::{self, Debug},
   num::NonZeroU32,
   path::PathBuf,
-  rc::Rc,
 };
 
-use gc::{unsafe_empty_trace, Gc, GcCell, Trace};
+use gc::{Gc, GcCell, Trace};
 use jsonnet_core_lang::TextRange;
 
-use crate::{engine::Engine, val::PartialValue, Value};
+use crate::{runtime::Engine, val::PartialValue, Value};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Location(Option<TextRange>);
@@ -99,22 +98,24 @@ impl From<bool> for LazyValue {
   }
 }
 
-#[derive(Clone)]
-struct EngineWrapper(Rc<dyn Engine>);
-
-unsafe impl Trace for EngineWrapper {
-  unsafe_empty_trace!();
-}
-
 #[derive(Trace, Clone)]
 pub(crate) struct EvalContext {
-  pub(crate) engine: EngineWrapper,
+  pub(crate) engine: Gc<Engine>,
   pub(crate) source: Gc<PathBuf>,
   pub(crate) super_value: Option<LazyValue>,
   pub(crate) args: HashMap<NonZeroU32, LazyValue>,
 }
 
 impl EvalContext {
+  pub(crate) fn new(engine: Gc<Engine>, source: Gc<PathBuf>) -> Self {
+    EvalContext {
+      engine,
+      source,
+      super_value: None,
+      args: HashMap::new(),
+    }
+  }
+
   pub(crate) fn with_super(&self, value: LazyValue) -> Self {
     EvalContext {
       super_value: Some(value),
@@ -142,6 +143,7 @@ impl EvalContext {
   }
 }
 
+#[derive(Debug)]
 pub struct EvalError {
   message: Box<str>,
   location: Location,
